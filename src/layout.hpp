@@ -11,6 +11,7 @@ namespace BL {
     class MenuEntry;
     class MenuHighlight;
     class SidebarHighlight;
+    class Clock;
     class SidebarEntry;
     class Font;
     class Texture;
@@ -96,6 +97,7 @@ namespace BL {
             std::vector<SidebarEntry> sidebar_entries;
             std::vector<SidebarEntry>::iterator current_entry;
             SidebarHighlight *sidebar_highlight = nullptr;
+            Clock *clock = nullptr;
             int sidebar_pos = 0;
             float sidebar_y_advance;
             float y_min;

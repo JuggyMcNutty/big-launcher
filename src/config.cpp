@@ -58,6 +58,13 @@ int BL::handler(void* user, const char* section, const char* name, const char* v
         config.hotkey_list.add(value);
     }
 
+    else if (MATCH(section, "Clock")) {
+        if (MATCH(name, "Enabled"))
+            config.add_bool(value, config.clock_enabled);
+        else if (MATCH(name, "Format"))
+            config.add_string(value, config.clock_format);
+    }
+
     else if (MATCH(section, "Gamepad")) {
         if (MATCH(name, "Enabled"))
             config.add_bool(value, config.gamepad_enabled);
@@ -78,7 +85,12 @@ void BL::Config::parse(const std::string &file)
     BL::logger::debug("Parsing config file '{}'", file);
     if (ini_parse(file.c_str(), BL::handler, nullptr) < 0)
         BL::logger::critical("Failed to parse config file");
-    BL::logger::debug("Sucessfully parsed config file");
+    BL::logger::debug("Successfully parsed config file");
+}
+
+void BL::Config::add_string(const char *value, std::string &out)
+{
+    out = value;
 }
 
 void BL::Config::add_bool(const char *value, bool &out)

@@ -13,6 +13,7 @@
 #include "main.hpp"
 #include "menu.hpp"
 #include "menu_highlight.hpp"
+#include "clock.hpp"
 #include "renderer.hpp"
 #include "screensaver.hpp"
 #include "sidebar_entry.hpp"
@@ -216,6 +217,14 @@ void BL::Layout::load_sidebar()
         y += sidebar_y_advance;
         i++;
     }
+    // Clock (bottom of the sidebar column)
+    if (config.clock_enabled) {
+        clock = new BL::Clock(sidebar_font_size, static_cast<int>(std::round(max_sidebar_text_width)));
+        clock->set_x(sidebar_text_x);
+        clock->set_y(y_max - sidebar_y_advance);
+        clock->render_surface();
+    }
+
     sidebar_text_clip = {
         0, 
         static_cast<int>(std::round(y_min)),
@@ -372,6 +381,13 @@ void BL::Layout::load_textures(BL::Renderer &renderer)
         entry.set_renderer(renderer);
         entry.render_texture();
         entry.set_text_color(&entry == &*current_entry ? config.sidebar_text_color_highlighted : config.sidebar_text_color);
+    }
+
+    // Render clock
+    if (clock) {
+        clock->set_renderer(renderer);
+        clock->render_texture();
+        clock->set_text_color(config.sidebar_text_color);
     }
 
     // Render application cards
@@ -680,6 +696,8 @@ void BL::Layout::update()
         update_press();
     if (screensaver)
         screensaver->update();
+    if (clock)
+        clock->update();
 }
 
 void BL::Layout::draw()
@@ -700,6 +718,8 @@ void BL::Layout::draw()
     renderer->set_clip_rect(sidebar_text_clip);
     for (BL::SidebarEntry &entry : sidebar_entries)
         entry.draw();
+    if (clock)
+        clock->draw();
 
     // Draw menu entries
     renderer->set_clip_rect(menu_clip);
@@ -736,4 +756,5 @@ BL::Layout::~Layout()
     delete sidebar_highlight;
     delete menu_highlight;
     delete screensaver;
+    delete clock;
 }

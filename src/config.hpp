@@ -55,6 +55,8 @@ namespace BL {
         bool gamepad_enabled = false;
         int gamepad_index;
         std::string gamepad_mappings_file;
+        bool clock_enabled = false;
+        std::string clock_format = "%H:%M";
         HotkeyList hotkey_list;
         std::vector<GamepadControl> gamepad_controls;
         std::vector<GamepadStick> gamepad_sticks;

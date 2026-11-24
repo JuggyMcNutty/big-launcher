@@ -1,5 +1,6 @@
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}")
 set(SOURCES
+  clock.cpp
   config.cpp
   gamepad.cpp
   hotkey.cpp
@@ -18,6 +19,7 @@ set(SOURCES
 )
 
 set(HEADERS
+  clock.hpp
   config.hpp
   drawable.hpp
   gamepad.hpp
