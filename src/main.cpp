@@ -21,6 +21,7 @@ static void print_help()
 
 int main(int argc, char *argv[])
 {
+    set_executable_dir(SDL_GetBasePath());
     auto logger = init_logging_global();
     int c;
     static struct option long_opts[] = {
@@ -61,7 +62,8 @@ int main(int argc, char *argv[])
         return app.run();
     }
     catch (std::exception &e) {
-        BL::logger::critical("Fatal error: {}", e.what());
+        fprintf(stderr, "big-launcher: fatal error: %s\n", e.what());
+        BL::logger::error("Fatal error: {}", e.what());
         return 1;
     }
 }

@@ -16,6 +16,17 @@ namespace BL {
     {
         executable_dir = dir ? dir : ".";
     }
+
+    static const char* safe_exec_dir()
+    {
+        return executable_dir ? executable_dir : ".";
+    }
+
+    static const char* safe_home()
+    {
+        const char *h = getenv("HOME");
+        return h ? h : "/tmp";
+    }
 }
 
 // Calculates the length of a utf-8 encoded C-style string
@@ -152,8 +163,8 @@ std::string BL::find_file(const char *filename)
         if (!paths.size()) {
             paths.resize(4);
             paths[0] = CURRENT_DIRECTORY;
-            paths[1] = executable_dir;
-            paths[2] = BL::join_paths(getenv("HOME"), ".config", EXECUTABLE_TITLE);
+            paths[1] = safe_exec_dir();
+            paths[2] = BL::join_paths(safe_home(), ".config", EXECUTABLE_TITLE);
             paths[3] = SYSTEM_SHARE_DIR;
         }
     }
@@ -161,7 +172,7 @@ std::string BL::find_file(const char *filename)
     if constexpr(file_type == BL::FileType::FONT) {
         if (!paths.size()) {
             paths.resize(2);
-            paths[0] = BL::join_paths(executable_dir, "assets", "fonts");
+            paths[0] = BL::join_paths(safe_exec_dir(), "assets", "fonts");
             paths[1] = SYSTEM_FONTS_DIR;
         }
     }
@@ -169,7 +180,7 @@ std::string BL::find_file(const char *filename)
     if constexpr(file_type == BL::FileType::AUDIO) {
         if (!paths.size()) {
             paths.resize(2);
-            paths[0] = BL::join_paths(executable_dir, "assets", "sounds");
+            paths[0] = BL::join_paths(safe_exec_dir(), "assets", "sounds");
             paths[1] = SYSTEM_SOUNDS_DIR;
         }
     }
