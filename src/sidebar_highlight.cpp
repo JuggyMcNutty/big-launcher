@@ -1,6 +1,6 @@
 #include <string>
 #include <cmath>
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "sidebar_highlight.hpp"
 #include "config.hpp"
@@ -17,9 +17,6 @@ void BL::SidebarHighlight::render_surface(BL::SVGRasterizer &rasterizer, float w
 {
     std::string highlight_buffer = format_highlight(static_cast<int>(w), static_cast<int>(h), cx, config.sidebar_highlight_color);
     SDL_Surface *highlight = rasterizer.rasterize_svg(highlight_buffer, -1, -1);
-#ifdef __unix
-    constexpr
-#endif
     Uint8 alpha = static_cast<Uint8>(std::round((255.f * BL::SHADOW_ALPHA)));
 
     float max_blur = BL::SHADOW_BLUR_SLOPE*h + BL::SHADOW_BLUR_INTERCEPT;

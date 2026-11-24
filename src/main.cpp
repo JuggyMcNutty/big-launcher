@@ -9,7 +9,7 @@
 #include <windows.h>
 #include <SDL3/SDL_main.h>
 #endif
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include "logger.hpp"
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>

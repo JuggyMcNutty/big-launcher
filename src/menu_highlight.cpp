@@ -1,6 +1,6 @@
 #include <string>
 #include <cmath>
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "image.hpp"
 #include "layout.hpp"
