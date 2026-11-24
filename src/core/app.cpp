@@ -16,6 +16,7 @@
 #include "../screens/settings/system.hpp"
 #include "../screens/settings/power.hpp"
 #include "../screens/settings/launcher.hpp"
+#include "../screens/settings/layout_editor.hpp"
 #include "../render/basic_lazy_file_sink.hpp"
 #include <getopt.h>
 #include <filesystem>
@@ -201,7 +202,7 @@ void BL::App::execute_command(const std::string &command)
         else if (command == ":system") screens_.push(std::make_unique<SystemSettings>(*this));
         else if (command == ":power") screens_.push(std::make_unique<PowerSettings>(*this));
         else if (command == ":launcher") screens_.push(std::make_unique<LauncherSettings>(*this));
-        else if (command == ":layout") { /* layout editor (Phase 3) */ }
+        else if (command == ":layout") screens_.push(std::make_unique<LayoutEditor>(*this));
         else if (command == ":volup") jobs_->run(ctl("audio", "volume/up"), [this](const JobResult&){ mark_dirty(); });
         else if (command == ":voldown") jobs_->run(ctl("audio", "volume/down"), [this](const JobResult&){ mark_dirty(); });
         else if (command == ":mute") jobs_->run(ctl("audio", "mute/toggle"), [this](const JobResult&){ mark_dirty(); });

@@ -22,6 +22,7 @@ set(SOURCES
   screens/settings/system.cpp
   screens/settings/power.cpp
   screens/settings/launcher.cpp
+  screens/settings/layout_editor.cpp
   jobs/job_queue.cpp
   render/renderer_sdl.cpp
   render/image.cpp
