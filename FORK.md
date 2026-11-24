@@ -9,6 +9,13 @@ Branch layout: **`master`** tracks upstream untouched (for future merges);
 
 ## Changes on `htpc`
 
+- **WiFi / Bluetooth settings UI**: new full-screen `BL::SettingsScreen`
+  (WiFi + Bluetooth pages). WiFi lists scanned SSIDs (wpa_cli, strongest
+  first) with live status; join = typed password via the physical keyboard
+  (SDL text input). Bluetooth lists known devices, scans, and
+  pairs/trusts/connects (bluetoothctl). Driven by the `htpc-net` shell
+  helper (see the HTPC project repo); degrades gracefully with no radio.
+  Special commands `:wifi` / `:bt` open the pages.
 - **Clock**: upstream shipped the `[Clock]` config section but no
   implementation. Implemented here — strftime-formatted clock
   (default `%H:%M`) rendered at the bottom of the sidebar column,
