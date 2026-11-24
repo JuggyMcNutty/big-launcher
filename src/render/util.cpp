@@ -10,16 +10,21 @@
 #include "util.hpp"
 
 namespace BL {
-    static const char *executable_dir = nullptr;
+    static const char *executable_dir_path = nullptr;
 
     void set_executable_dir(const char *dir)
     {
-        executable_dir = dir ? dir : ".";
+        executable_dir_path = dir ? dir : ".";
+    }
+
+    const char* executable_dir()
+    {
+        return executable_dir_path ? executable_dir_path : ".";
     }
 
     static const char* safe_exec_dir()
     {
-        return executable_dir ? executable_dir : ".";
+        return executable_dir_path ? executable_dir_path : ".";
     }
 
     static const char* safe_home()

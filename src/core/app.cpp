@@ -48,13 +48,15 @@ namespace BL {
     }
 }
 
-BL::App::App(std::string config_path, std::string layout_path)
+BL::App::App(std::string config_path, std::string layout_path, bool overlay)
+    : overlay_(overlay)
 {
     set_executable_dir(SDL_GetBasePath());
     config_path_ = config_path;
     layout_path_ = layout_path;
     config_.parse(config_path);
-    layout_.parse(layout_path);
+    if (!overlay_)
+        layout_.parse(layout_path);
 
     init_display();
     create_window();
@@ -85,13 +87,16 @@ BL::App::App(std::string config_path, std::string layout_path)
     cec_ = std::make_unique<Cec>();
 #endif
 
-    build_home();
-    BL::logger::debug("App initialized ({}x{})", screen_w_, screen_h_);
+    if (!overlay_)
+        build_home();
+    BL::logger::debug("App initialized ({}x{}) {}", screen_w_, screen_h_, overlay_ ? "[overlay]" : "");
 }
 
 BL::App::~App()
 {
     if (jobs_) jobs_->stop();
+    // Destroy sound before SDL_Quit (it owns an audio stream).
+    sound_.reset();
     if (window_) SDL_DestroyWindow(window_);
     TTF_Quit();
     SDL_Quit();
@@ -224,14 +229,26 @@ void BL::App::execute_command(const std::string &command)
     }
 }
 
+void BL::App::open_quick_menu()
+{
+    // Launch the overlay as a separate process; gamescope composites it on
+    // top of the running app because GAMESCOPE_EXTERNAL_OVERLAY is set.
+    if (overlay_proc_.alive()) return; // already showing
+    std::string exe = std::string(BL::executable_dir()) + "/big-launcher";
+    std::string cmd = "GAMESCOPE_EXTERNAL_OVERLAY=1 HTPC_APP_PID=" +
+                      std::to_string(app_proc_.pid()) + " " + exe +
+                      " --overlay -c " + config_path_;
+    BL::logger::info("Opening quick menu overlay (app pid {})", app_proc_.pid());
+    overlay_proc_ = Process::spawn(cmd);
+}
+
 void BL::App::on_global_action(Action action)
 {
     // Global input while an app is focused (from evdev/CEC)
     switch (action) {
         case Action::Home:
         case Action::Menu:
-            // Open quick menu (Phase 3). For now, just log.
-            BL::logger::debug("Global {} while app running", action_name(action));
+            open_quick_menu();
             break;
         case Action::VolUp:
             jobs_->run(ctl("audio", "volume/up"), nullptr);
@@ -366,11 +383,19 @@ void BL::App::update_app_state()
             int code = app_proc_.exit_status();
             BL::logger::info("App exited with status {}", code);
             app_proc_ = Process();
+            // Dismiss the quick menu overlay (if showing) since the app is gone.
+            if (overlay_proc_.alive()) {
+                overlay_proc_.kill();
+                overlay_proc_ = Process();
+            }
             mark_dirty();
             if (code != 0)
                 show_toast("App exited with an error");
         }
     }
+    // Reap the overlay process if it exited on its own.
+    if (overlay_proc_.alive() && overlay_proc_.poll())
+        overlay_proc_ = Process();
 }
 
 void BL::App::refresh_status()
@@ -410,6 +435,16 @@ void BL::App::draw()
 {
     auto &r = *renderer_;
     r.clear();
+
+    if (overlay_) {
+        // External overlay: dim the app underneath, draw the menu on top.
+        r.fill_rect({0.f, 0.f, (float) screen_w_, (float) screen_h_}, {0x00, 0x00, 0x00, 0xAA});
+        if (!screens_.empty())
+            screens_.top()->draw();
+        r.present();
+        return;
+    }
+
     r.fill_rect({0.f, 0.f, (float) screen_w_, (float) screen_h_}, theme_.background);
 
     if (!app_proc_.alive() && !screens_.empty()) {

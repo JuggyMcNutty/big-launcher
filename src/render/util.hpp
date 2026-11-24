@@ -15,6 +15,7 @@ namespace BL {
 
     // Set by the app at startup (SDL_GetBasePath)
     void set_executable_dir(const char *dir);
+    const char* executable_dir();
 
     int utf8_length(std::string_view string);
     Uint16 get_unicode_code_point(const char *p, int &bytes);

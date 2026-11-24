@@ -4,6 +4,7 @@
 
 #include <SDL3/SDL.h>
 #include "core/app.hpp"
+#include "screens/quick_menu.hpp"
 #include "render/util.hpp"
 #include "render/logger.hpp"
 #include <lconfig.h>
@@ -28,16 +29,18 @@ int main(int argc, char *argv[])
         { "config",  required_argument, nullptr, 'c' },
         { "layout",  required_argument, nullptr, 'l' },
         { "debug",   no_argument,       nullptr, 'd' },
+        { "overlay", no_argument,       nullptr, 'o' },
         { "help",    no_argument,       nullptr, 'h' },
         { 0, 0, 0, 0 }
     };
     std::string config_path, layout_path;
-    bool debug = false;
-    while ((c = getopt_long(argc, argv, "+c:l:dh", long_opts, nullptr)) != -1) {
+    bool debug = false, overlay = false;
+    while ((c = getopt_long(argc, argv, "+c:l:dh o", long_opts, nullptr)) != -1) {
         switch (c) {
             case 'c': if (optarg) config_path = optarg; break;
             case 'l': if (optarg) layout_path = optarg; break;
             case 'd': debug = true; break;
+            case 'o': overlay = true; break;
             case 'h': print_help(); return 0;
             default: break;
         }
@@ -56,9 +59,11 @@ int main(int argc, char *argv[])
     }
 
     try {
-        App app(config_path, layout_path);
+        App app(config_path, layout_path, overlay);
         if (debug)
             app.config().debug = true;
+        if (overlay)
+            app.screens().push(std::make_unique<QuickMenu>(app));
         return app.run();
     }
     catch (std::exception &e) {

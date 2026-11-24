@@ -14,6 +14,7 @@ set(SOURCES
   ui/status_bar.cpp
   ui/shapes.cpp
   screens/home.cpp
+  screens/quick_menu.cpp
   screens/settings/hub.cpp
   screens/settings/audio.cpp
   screens/settings/display.cpp

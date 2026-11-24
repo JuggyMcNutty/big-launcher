@@ -36,8 +36,9 @@ namespace BL {
     // screens receive App& and use it to access services.
     class App {
     public:
-        App(std::string config_path, std::string layout_path);
+        App(std::string config_path, std::string layout_path, bool overlay = false);
         ~App();
+        bool is_overlay() const { return overlay_; }
 
         int run();
 
@@ -72,6 +73,7 @@ namespace BL {
         bool app_running() const { return app_proc_.alive(); }
         void close_app();            // SIGTERM the running app
         void restart_ui();           // :quit — restart the launcher
+        void open_quick_menu();      // launch the overlay while an app runs
 
         // Global (non-grabbing) input while an app is focused
         void on_global_action(Action action);
@@ -106,6 +108,7 @@ namespace BL {
         Anim anim_;
         StatusBar status_bar_;
         Process app_proc_;
+        Process overlay_proc_;
         Uint64 last_status_refresh_ = 0;
 
         SDL_Window *window_ = nullptr;
@@ -115,6 +118,7 @@ namespace BL {
         bool quit_ = false;
         bool dirty_ = true;
         bool screensaver_active_ = false;
+        bool overlay_ = false;
 
         Uint64 last_input_ = 0;
         Uint64 last_clock_tick_ = 0;
