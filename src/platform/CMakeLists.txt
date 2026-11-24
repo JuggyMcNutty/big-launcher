@@ -1,7 +1,0 @@
-if (UNIX)
-  add_library(platform unix.cpp platform.hpp)
-  target_link_libraries(platform PkgConfig::SDL3 PkgConfig::SPDLOG)
-elseif (WIN32)
-  add_library(platform win32.cpp platform.hpp)
-  target_link_libraries(platform SDL3::SDL3)
-endif ()

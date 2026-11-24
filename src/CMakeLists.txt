@@ -1,77 +1,58 @@
-set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}")
 set(SOURCES
-  clock.cpp
-  config.cpp
-  gamepad.cpp
-  hotkey.cpp
-  image.cpp
-  layout.cpp
   main.cpp
-  menu.cpp
-  menu_highlight.cpp
-  network.cpp
-  renderer_sdl.cpp
-  screensaver.cpp
-  settings_screen.cpp
-  sidebar_entry.cpp
-  sidebar_highlight.cpp
-  sound.cpp
-  text.cpp
-  util.cpp
+  core/app.cpp
+  core/config.cpp
+  core/layout_model.cpp
+  platform/process.cpp
+  platform/power.cpp
+  platform/sysctl.cpp
+  input/action_mapper.cpp
+  ui/list_screen.cpp
+  ui/anim.cpp
+  ui/text_sprite.cpp
+  ui/shapes.cpp
+  screens/home.cpp
+  screens/settings/hub.cpp
+  screens/settings/audio.cpp
+  screens/settings/display.cpp
+  screens/settings/network.cpp
+  screens/settings/bluetooth.cpp
+  screens/settings/system.cpp
+  screens/settings/power.cpp
+  screens/settings/launcher.cpp
+  jobs/job_queue.cpp
+  render/renderer_sdl.cpp
+  render/image.cpp
+  render/text.cpp
+  render/sound.cpp
+  render/util.cpp
+  render/theme.cpp
 )
 
-set(HEADERS
-  clock.hpp
-  config.hpp
-  drawable.hpp
-  gamepad.hpp
-  hotkey.hpp
-  image.hpp
-  layout.hpp
-  logger.hpp
-  main.hpp
-  menu.hpp
-  menu_highlight.hpp
-  network.hpp
-  object.hpp
-  renderer.hpp
-  renderer_sdl.hpp
-  screensaver.hpp
-  settings_screen.hpp
-  sidebar_entry.hpp
-  sidebar_highlight.hpp
-  sound.hpp
-  text.hpp
-  util.hpp
-)
-if (UNIX)
-  add_executable(${EXECUTABLE_TITLE} ${SOURCES} ${HEADERS})
-  target_link_libraries(${EXECUTABLE_TITLE} 
-    PkgConfig::SDL3
-    PkgConfig::SDL3_IMAGE
-    PkgConfig::SDL3_TTF
-    PkgConfig::LIBXML2 
-    PkgConfig::FMT
-    PkgConfig::SPDLOG
-  )
-elseif (WIN32)
-  set(MANIFEST_FILE "${PROJECT_BINARY_DIR}/${EXECUTABLE_TITLE}.manifest")
-  add_executable(${EXECUTABLE_TITLE} WIN32 ${SOURCES} ${HEADERS} ${MANIFEST_FILE})
-  set_property(TARGET ${EXECUTABLE_TITLE} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_BINARY_DIR}")
-  target_link_libraries(${EXECUTABLE_TITLE} 
-  $<TARGET_NAME_IF_EXISTS:SDL3::SDL3main>
-  $<IF:$<TARGET_EXISTS:SDL3::SDL3>,SDL3::SDL3,SDL3::SDL3-static>
-  $<IF:$<TARGET_EXISTS:SDL3_image::SDL3_image-shared>,SDL3_image::SDL3_image-shared,SDL3_image::SDL3_image-static>
-	$<IF:$<TARGET_EXISTS:SDL3_ttf::SDL3_ttf>,SDL3_ttf::SDL3_ttf,SDL3_ttf::SDL3_ttf-static> 
-	spdlog::spdlog
-	LibXml2::LibXml2
-	${GETOPT} 
-	PowrProf
-  )
-  target_include_directories(${EXECUTABLE_TITLE} PUBLIC ${GETOPT_INCLUDE_DIR})
+if (BL_EVDEV AND LIBEVDEV_FOUND)
+  list(APPEND SOURCES input/evdev_global.cpp)
+endif ()
+if (BL_CEC)
+  list(APPEND SOURCES input/cec.cpp)
 endif ()
 
-add_subdirectory(platform)
-add_subdirectory(external)
-target_link_libraries(${EXECUTABLE_TITLE} platform)
-target_link_libraries(${EXECUTABLE_TITLE} inih)
+add_library(inih external/ini.c)
+target_compile_definitions(inih PRIVATE INI_MAX_LINE=1027)
+
+add_executable(${EXECUTABLE_TITLE} ${SOURCES})
+target_include_directories(${EXECUTABLE_TITLE} PRIVATE ${PROJECT_BINARY_DIR})
+target_link_libraries(${EXECUTABLE_TITLE}
+  PkgConfig::SDL3
+  PkgConfig::SDL3_IMAGE
+  PkgConfig::SDL3_TTF
+  PkgConfig::LIBXML2
+  PkgConfig::FMT
+  PkgConfig::SPDLOG
+  inih
+)
+if (BL_EVDEV AND LIBEVDEV_FOUND)
+  target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBEVDEV)
+endif ()
+if (BL_CEC)
+  target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBCEC)
+endif ()
