@@ -43,6 +43,9 @@ namespace BL {
         sinks.push_back(console_sink);
         auto logger = std::make_shared<spdlog::logger>("big-launcher", sinks.begin(), sinks.end());
         logger->set_level(spdlog::level::info);
+        // spdlog's default flush level is off — the file sink would otherwise
+        // keep messages in its buffer until it fills, leaving the log empty.
+        logger->flush_on(spdlog::level::info);
         spdlog::set_default_logger(logger);
         return logger;
     }
@@ -89,7 +92,7 @@ BL::App::App(std::string config_path, std::string layout_path, bool overlay)
 
     if (!overlay_)
         build_home();
-    BL::logger::debug("App initialized ({}x{}) {}", screen_w_, screen_h_, overlay_ ? "[overlay]" : "");
+    BL::logger::info("App initialized ({}x{}) {}", screen_w_, screen_h_, overlay_ ? "[overlay]" : "");
 }
 
 BL::App::~App()
@@ -475,7 +478,7 @@ void BL::App::draw()
 
 int BL::App::run()
 {
-    BL::logger::debug("Begin main loop");
+    BL::logger::info("Begin main loop");
     refresh_status();
     while (!quit_) {
         SDL_Event event;
