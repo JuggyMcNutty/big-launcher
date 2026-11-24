@@ -9,8 +9,10 @@ set(SOURCES
   main.cpp
   menu.cpp
   menu_highlight.cpp
+  network.cpp
   renderer_sdl.cpp
   screensaver.cpp
+  settings_screen.cpp
   sidebar_entry.cpp
   sidebar_highlight.cpp
   sound.cpp
@@ -30,10 +32,12 @@ set(HEADERS
   main.hpp
   menu.hpp
   menu_highlight.hpp
+  network.hpp
   object.hpp
   renderer.hpp
   renderer_sdl.hpp
   screensaver.hpp
+  settings_screen.hpp
   sidebar_entry.hpp
   sidebar_highlight.hpp
   sound.hpp

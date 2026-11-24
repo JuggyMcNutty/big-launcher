@@ -3,6 +3,7 @@
 
 void BL::TextureSDL::set_color_mod(const SDL_Color &color)
 {
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
     SDL_SetTextureColorMod(texture, color.r, color.g, color.b);
     SDL_SetTextureAlphaMod(texture, color.a);
 }

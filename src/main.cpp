@@ -82,6 +82,7 @@ BL::Launcher::Launcher(const std::string &layout_path)
     layout->load_surfaces();
 
     create_window();
+    SDL_StartTextInput(window);   // settings password entry needs text input events
 
     BL::logger::debug("Creating renderer...");
     renderer = new BL::RendererSDL(*window);
@@ -382,6 +383,20 @@ int BL::Launcher::run()
                     break;
 
                 case SDL_EVENT_KEY_DOWN:
+                    if (layout->settings_active()) {
+                        switch (event.key.key) {
+                            case SDLK_UP:       layout->settings_move_up();   break;
+                            case SDLK_DOWN:     layout->settings_move_down(); break;
+                            case SDLK_RETURN:   layout->settings_select();    break;
+                            case SDLK_BACKSPACE: layout->settings_backspace(); break;
+                            case SDLK_R:        layout->settings_refresh();    break;
+                            case SDLK_ESCAPE:   layout->settings_back();      break;
+                            default: break;
+                        }
+                        ticks.last_input = ticks.main;
+                        SDL_FlushEvent(SDL_EVENT_KEY_DOWN);
+                        break;
+                    }
                     if (!state.application_launching) {
                         if (event.key.key == SDLK_DOWN)
                             layout->move_down();
@@ -406,6 +421,11 @@ int BL::Launcher::run()
                         ticks.last_input = ticks.main;
                         SDL_FlushEvent(SDL_EVENT_KEY_DOWN);
                     }
+                    break;
+
+                case SDL_EVENT_TEXT_INPUT:
+                    if (layout->settings_active())
+                        layout->settings_text_input(event.text.text);
                     break;
 
                 case SDL_EVENT_JOYSTICK_ADDED:
@@ -500,6 +520,10 @@ void BL::Launcher::execute_command(const std::string &command)
             scmd_restart();
         else if (command == ":sleep")
             scmd_sleep();
+        else if (command == ":wifi")
+            layout->settings_open(BL::SettingsPage::WIFI);
+        else if (command == ":bt")
+            layout->settings_open(BL::SettingsPage::BLUETOOTH);
         else if (command == ":quit")
             quit = true;
     }

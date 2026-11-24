@@ -702,6 +702,14 @@ void BL::Layout::update()
 
 void BL::Layout::draw()
 {
+    // Settings screen takes over the full display while active
+    if (settings_active()) {
+        renderer->clear();
+        settings_screen->draw();
+        renderer->present();
+        return;
+    }
+
     renderer->clear();
 
     // Draw background
@@ -757,4 +765,20 @@ BL::Layout::~Layout()
     delete menu_highlight;
     delete screensaver;
     delete clock;
+    delete settings_screen;
+}
+
+void BL::Layout::settings_open(SettingsPage page)
+{
+    if (!renderer)
+        return;
+    if (!settings_screen)
+        settings_screen = new BL::SettingsScreen();
+    settings_screen->open(page, *renderer, screen_width, screen_height);
+}
+
+void BL::Layout::settings_close()
+{
+    if (settings_screen)
+        settings_screen->close();
 }

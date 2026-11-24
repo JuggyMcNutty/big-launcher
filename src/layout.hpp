@@ -4,6 +4,7 @@
 #include <vector>
 #include <SDL3/SDL.h>
 #include "object.hpp"
+#include "settings_screen.hpp"
 
 namespace BL {
     class SVGRasterizer;
@@ -98,6 +99,7 @@ namespace BL {
             std::vector<SidebarEntry>::iterator current_entry;
             SidebarHighlight *sidebar_highlight = nullptr;
             Clock *clock = nullptr;
+            SettingsScreen *settings_screen = nullptr;
             int sidebar_pos = 0;
             float sidebar_y_advance;
             float y_min;
@@ -158,6 +160,18 @@ namespace BL {
             void move_left();
             void move_right();
             void select();
+
+            // Settings screen (WiFi / Bluetooth)
+            bool settings_active() const { return settings_screen && settings_screen->is_active(); }
+            void settings_open(SettingsPage page);
+            void settings_close();
+            void settings_move_up()   { if (settings_screen) settings_screen->move_up(); }
+            void settings_move_down() { if (settings_screen) settings_screen->move_down(); }
+            void settings_select()   { if (settings_screen) settings_screen->select(); }
+            void settings_refresh()  { if (settings_screen) settings_screen->refresh(); }
+            void settings_text_input(const char *text) { if (settings_screen) settings_screen->text_input(text); }
+            void settings_backspace() { if (settings_screen) settings_screen->backspace(); }
+            void settings_back()      { if (settings_screen) settings_screen->back(); }
     };
 }
 
