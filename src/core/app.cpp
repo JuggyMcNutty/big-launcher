@@ -30,8 +30,10 @@ namespace BL {
     std::shared_ptr<spdlog::logger> init_logging_global()
     {
         char *home_dir = getenv("HOME");
-        std::string log_path = join_paths(home_dir ? home_dir : "/tmp", ".local", "share", EXECUTABLE_TITLE, "big-launcher.log").string();
-        auto file_sink = std::make_shared<spdlog::sinks::basic_lazy_file_sink_st>(log_path, true);
+        std::filesystem::path log_path = join_paths(home_dir ? home_dir : "/tmp", ".local", "share", EXECUTABLE_TITLE, "big-launcher.log");
+        std::error_code ec;
+        std::filesystem::create_directories(log_path.parent_path(), ec);
+        auto file_sink = std::make_shared<spdlog::sinks::basic_lazy_file_sink_st>(log_path.string(), true);
         file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
         std::vector<spdlog::sink_ptr> sinks{file_sink};
         auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
