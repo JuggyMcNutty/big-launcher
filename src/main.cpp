@@ -33,10 +33,10 @@ int main(int argc, char *argv[])
     };
     std::string config_path, layout_path;
     bool debug = false;
-    while ((c = getopt_long(argc, argv, "+c:ldh", long_opts, nullptr)) != -1) {
+    while ((c = getopt_long(argc, argv, "+c:l:dh", long_opts, nullptr)) != -1) {
         switch (c) {
-            case 'c': config_path = optarg; break;
-            case 'l': layout_path = optarg; break;
+            case 'c': if (optarg) config_path = optarg; break;
+            case 'l': if (optarg) layout_path = optarg; break;
             case 'd': debug = true; break;
             case 'h': print_help(); return 0;
             default: break;
