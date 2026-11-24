@@ -566,7 +566,7 @@ int main(int argc, char *argv[])
     catch(std::exception &e) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, 
             PROJECT_NAME, 
-            fmt::format("A fatal error occured: {}\n\nCheck the log file for more information.", e.what()).c_str(), 
+            fmt::format("A fatal error occurred: {}\n\nCheck the log file for more information.", e.what()).c_str(), 
             nullptr
         );
         return EXIT_FAILURE;
