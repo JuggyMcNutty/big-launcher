@@ -2,6 +2,7 @@
 #include "../../core/app.hpp"
 #include "../../platform/sysctl.hpp"
 #include "../../render/util.hpp"
+#include "../../ui/text_input.hpp"
 
 BL::NetworkSettings::NetworkSettings(App &app): ListScreen(app)
 {
@@ -62,15 +63,21 @@ void BL::NetworkSettings::on_select(int index)
         return;
     }
     if (index >= 3) {
-        // Connect to the selected network (open or remembered)
+        // Connect to the selected network: ask for the password via the OSK
         std::string ssid = item_text(index);
-        app_.show_toast("Connecting to " + ssid + "...");
-        app_.jobs().run(ctl("wifi", "connect", {ssid, ""}), [this, ssid](const JobResult &res) {
-            if (res.ok)
-                app_.show_toast("Connected to " + ssid);
-            else
-                app_.show_toast("Connect failed (password needed?)");
-            refresh_status();
-        });
+        app_.screens().push(std::make_unique<TextInput>(
+            app_, "Password for \"" + ssid + "\"",
+            [this, ssid](std::string pass) {
+                app_.show_toast("Connecting to " + ssid + "...");
+                app_.jobs().run(ctl("wifi", "connect", {ssid, std::move(pass)}),
+                    [this, ssid](const JobResult &res) {
+                        if (res.ok)
+                            app_.show_toast("Connected to " + ssid);
+                        else
+                            app_.show_toast("Connect failed (check password)");
+                        refresh_status();
+                    });
+            },
+            [this]() { /* cancelled */ }));
     }
 }

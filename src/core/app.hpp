@@ -15,6 +15,7 @@
 #include "../render/sound.hpp"
 #include "../ui/screen.hpp"
 #include "../ui/anim.hpp"
+#include "../ui/status_bar.hpp"
 #include "../jobs/job_queue.hpp"
 #include "../platform/process.hpp"
 #include "../input/action.hpp"
@@ -51,6 +52,7 @@ namespace BL {
         int screen_h() const { return screen_h_; }
         Sound* sound() { return sound_.get(); }
         ScreenStack& screens() { return screens_; }
+        StatusBar& status_bar() { return status_bar_; }
 
         // Command execution (from tiles / hotkeys / quick menu)
         void execute_command(const std::string &command);
@@ -88,6 +90,8 @@ namespace BL {
         void update_app_state();
         void draw();
         void build_home();
+        void refresh_status();
+        void schedule_status_refresh();
 
         // Services
         std::unique_ptr<RendererSDL> renderer_;
@@ -100,7 +104,9 @@ namespace BL {
         std::unique_ptr<Sound> sound_;
         ScreenStack screens_;
         Anim anim_;
+        StatusBar status_bar_;
         Process app_proc_;
+        Uint64 last_status_refresh_ = 0;
 
         SDL_Window *window_ = nullptr;
         const SDL_DisplayMode *dm_ = nullptr;

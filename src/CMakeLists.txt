@@ -10,6 +10,8 @@ set(SOURCES
   ui/list_screen.cpp
   ui/anim.cpp
   ui/text_sprite.cpp
+  ui/text_input.cpp
+  ui/status_bar.cpp
   ui/shapes.cpp
   screens/home.cpp
   screens/settings/hub.cpp

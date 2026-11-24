@@ -372,14 +372,49 @@ void BL::App::update_app_state()
     }
 }
 
+void BL::App::refresh_status()
+{
+    last_status_refresh_ = SDL_GetTicks();
+    jobs_->run(ctl("net", "status"), [this](const JobResult &res) {
+        if (!res.ok) return;
+        std::string net;
+        for (const auto &line : split_lines(res.output)) {
+            if (line.starts_with("eth=")) net = "eth " + line.substr(4);
+            else if (line.starts_with("wifi=") && line.size() > 5 && line.substr(5) != "no adapter")
+                net = "wifi " + line.substr(5);
+        }
+        status_bar_.set_network(net);
+        mark_dirty();
+    });
+    jobs_->run(ctl("audio", "volume/get"), [this](const JobResult &res) {
+        if (!res.ok) return;
+        int vol = -1; bool mute = false;
+        for (const auto &line : split_lines(res.output)) {
+            if (line.starts_with("volume=")) vol = std::atoi(line.substr(7).c_str());
+            else if (line.starts_with("muted=")) mute = line.substr(6) == "1";
+        }
+        std::string a = mute ? "muted" : (vol >= 0 ? ("vol " + std::to_string(vol)) : "");
+        status_bar_.set_audio(a);
+        mark_dirty();
+    });
+}
+
+void BL::App::schedule_status_refresh()
+{
+    if (SDL_GetTicks() - last_status_refresh_ >= 5000)
+        refresh_status();
+}
+
 void BL::App::draw()
 {
     auto &r = *renderer_;
     r.clear();
     r.fill_rect({0.f, 0.f, (float) screen_w_, (float) screen_h_}, theme_.background);
 
-    if (!app_proc_.alive() && !screens_.empty())
+    if (!app_proc_.alive() && !screens_.empty()) {
         screens_.top()->draw();
+        status_bar_.draw(r, theme_, (float) screen_w_, (float) screen_h_);
+    }
 
     // Screensaver dim
     if (screensaver_active_) {
@@ -405,12 +440,14 @@ void BL::App::draw()
 int BL::App::run()
 {
     BL::logger::debug("Begin main loop");
+    refresh_status();
     while (!quit_) {
         SDL_Event event;
         while (SDL_PollEvent(&event))
             handle_event(event);
 
         update_app_state();
+        schedule_status_refresh();
         anim_.update();
 
         // Screensaver (dim on idle)
