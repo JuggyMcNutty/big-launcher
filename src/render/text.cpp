@@ -15,6 +15,13 @@ BL::Font::Font(const std::string &file, int height)
 
 SDL_Surface* BL::Font::render_text(const std::string &text, SDL_Rect *src_rect, SDL_Rect *dst_rect, int max_width)
 {
+    if (text.empty()) {
+        // SDL_ttf cannot render an empty string (returns NULL). Give callers
+        // a 1x1 transparent surface so an empty sprite is just invisible.
+        SDL_Surface *s = SDL_CreateSurface(1, 1, SDL_PIXELFORMAT_ARGB8888);
+        if (s) SDL_FillSurfaceRect(s, nullptr, 0x00000000u); // transparent
+        return s;
+    }
     SDL_Surface *surface = nullptr;
     int width;
     std::string truncated_text;

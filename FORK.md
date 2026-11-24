@@ -4,10 +4,10 @@ This is a fork of [complexlogic/big-launcher](https://github.com/complexlogic/bi
 (upstream dormant since 2025-08) maintained for a living-room HTPC build
 (Alpine/musl, gamescope, 1080p60).
 
-Branch layout:
+Branch layout (`v2` is the default branch):
+- **`v2`** — the full couch-frontend rewrite (current shipping branch on the box). See below.
 - **`master`** tracks upstream untouched (for future merges)
 - **`htpc`** — the v1 launcher (incremental fixes on upstream). Kept as a working fallback.
-- **`v2`** — the full couch-frontend rewrite (current shipping branch on the box). See below.
 
 ## Changes on `v2` (full rewrite)
 
