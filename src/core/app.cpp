@@ -85,6 +85,18 @@ BL::App::App(std::string config_path, std::string layout_path, bool overlay)
 
 #ifdef BL_EVDEV
     evdev_ = std::make_unique<EvdevGlobal>();
+    if (!overlay_) {
+        // The overlay is a separate process; it handles its own input via SDL.
+        // Callback runs on the evdev thread — deliver through an SDL user
+        // event so actions execute on the main thread.
+        evdev_->set_callback([](Action a) {
+            SDL_Event e;
+            e.type = EVT_GLOBAL_ACTION;
+            e.user.data1 = (void*) (intptr_t) (int) a;
+            SDL_PushEvent(&e);
+        });
+        evdev_->start();
+    }
 #endif
 #ifdef BL_CEC
     cec_ = std::make_unique<Cec>();
@@ -343,6 +355,15 @@ void BL::App::handle_event(SDL_Event &event)
 {
     if (jobs_->handle_event(event))
         return;
+
+    if (event.type == EVT_GLOBAL_ACTION) {
+        Action a = (Action) (int) (intptr_t) event.user.data1;
+        // Only meaningful while an app has focus: when the launcher (or the
+        // overlay) is focused, SDL delivers the same keys and handles them.
+        if (app_proc_.alive() && !overlay_proc_.alive())
+            on_global_action(a);
+        return;
+    }
 
     switch (event.type) {
         case SDL_EVENT_QUIT:

@@ -2,6 +2,7 @@
 #include "../render/logger.hpp"
 
 #include <libevdev/libevdev.h>
+#include <linux/input-event-codes.h>
 #include <unistd.h>
 #include <poll.h>
 #include <dirent.h>
@@ -54,7 +55,7 @@ void BL::EvdevGlobal::thread_loop()
             fds.push_back(fd);
     }
     closedir(dir);
-    BL::logger::debug("evdev: monitoring {} devices", fds.size());
+    BL::logger::info("evdev: monitoring {} devices", fds.size());
 
     struct epoll_event events[16];
     while (running_) {
@@ -66,11 +67,12 @@ void BL::EvdevGlobal::thread_loop()
                 Action a = Action::None;
                 if (e.value == 1) {  // press
                     switch (e.code) {
-                        case 217: a = Action::Home; break;   // KEY_TV
-                        case 172: a = Action::Home; break;   // KEY_HOME
-                        case 115: a = Action::VolUp; break;
-                        case 114: a = Action::VolDown; break;
-                        case 113: a = Action::Mute; break;
+                        case KEY_HOME:  a = Action::Home; break;
+                        case KEY_TV:    a = Action::Home; break;
+                        case KEY_MENU:  a = Action::Menu; break;
+                        case KEY_VOLUMEUP:   a = Action::VolUp; break;
+                        case KEY_VOLUMEDOWN: a = Action::VolDown; break;
+                        case KEY_MUTE:       a = Action::Mute; break;
                         default: break;
                     }
                 }
