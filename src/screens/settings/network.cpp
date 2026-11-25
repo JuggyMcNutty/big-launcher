@@ -4,13 +4,28 @@
 #include "../../render/util.hpp"
 #include "../../ui/text_input.hpp"
 
+namespace BL {
+    static std::vector<std::string> split_tabs(const std::string &line)
+    {
+        std::vector<std::string> out;
+        size_t start = 0;
+        while (true) {
+            size_t tab = line.find('\t', start);
+            out.push_back(line.substr(start, tab == std::string::npos ? std::string::npos : tab - start));
+            if (tab == std::string::npos) break;
+            start = tab + 1;
+        }
+        return out;
+    }
+
+    static std::string dash(const std::string &s) { return s.empty() || s == "-" ? "--" : s; }
+}
+
 BL::NetworkSettings::NetworkSettings(App &app): ListScreen(app)
 {
     set_title("Network");
     set_footer("A: select  B: back");
-    add_item("Ethernet", "--");
-    add_item("WiFi", "--");
-    add_item("Scan Networks");
+    rebuild();
 }
 
 void BL::NetworkSettings::on_show()
@@ -18,16 +33,69 @@ void BL::NetworkSettings::on_show()
     refresh_status();
 }
 
+void BL::NetworkSettings::rebuild()
+{
+    int prev = selected();
+    clear_items();
+
+    auto info = [this](const std::string &k, const std::string &v) {
+        add_item(k, dash(v));
+        set_enabled((int) count() - 1, false);  // info row: not focusable
+    };
+
+    if (!loaded_) {
+        info(failed_ ? "Could not read network status" : "Loading...", "");
+    }
+    else if (ifaces_.empty()) {
+        info("No network interfaces found", "");
+    }
+    for (const auto &i : ifaces_) {
+        std::string kind = i.type == "wifi" ? "WiFi" : "Ethernet";
+        info(kind + " (" + i.name + ")", i.state == "up" ? "Connected" : i.state);
+        info("    IP address", i.ip);
+        if (i.type != "wifi") info("    Link speed", i.speed);
+        info("    Gateway", i.gateway);
+        info("    DNS", i.dns);
+        info("    MAC", i.mac);
+    }
+
+    bool have_wifi_iface = false;
+    for (const auto &i : ifaces_) if (i.type == "wifi") have_wifi_iface = true;
+    if (!have_wifi_iface)
+        info("WiFi", wifi_state_);
+
+    add_item("Scan WiFi Networks");
+    scan_index_ = (int) count() - 1;
+    first_network_ = (int) count();
+    for (const auto &n : networks_)
+        add_item(n.ssid, n.signal + " dBm");
+
+    // Keep focus on an actionable item
+    if (prev >= scan_index_ && prev < (int) count()) set_selected(prev);
+    else set_selected(scan_index_);
+}
+
 void BL::NetworkSettings::refresh_status()
 {
     app_.jobs().run(ctl("net", "status"), [this](const JobResult &res) {
-        if (!res.ok) return;
+        // Parse whatever output we got even on a non-zero exit (partial info
+        // is better than none).
+        ifaces_.clear();
         for (const auto &line : split_lines(res.output)) {
-            if (line.starts_with("eth="))
-                set_value(item_eth, line.substr(4));
-            else if (line.starts_with("wifi="))
-                set_value(item_wifi, line.substr(5));
+            if (line.starts_with("iface\t")) {
+                auto f = split_tabs(line);
+                if (f.size() < 9) continue;
+                ifaces_.push_back({f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]});
+            }
+            else if (line.starts_with("wifi=")) {
+                wifi_state_ = line.substr(5);
+            }
         }
+        loaded_ = res.ok || !ifaces_.empty();
+        failed_ = !loaded_;
+        if (failed_)
+            app_.show_toast("Network status failed (exit " + std::to_string(res.exit_code) + ")");
+        rebuild();
         app_.mark_dirty();
     });
 }
@@ -36,35 +104,29 @@ void BL::NetworkSettings::scan()
 {
     app_.show_toast("Scanning...");
     app_.jobs().run(ctl("wifi", "scan"), [this](const JobResult &res) {
-        if (!res.ok) return;
-        // Remove old network items (keep first 3)
-        while (count() > 3) {
-            items_.pop_back();
-        }
-        int added = 0;
+        networks_.clear();
         for (const auto &line : split_lines(res.output)) {
             auto tab = line.find('\t');
             if (tab == std::string::npos) continue;
-            std::string ssid = line.substr(0, tab);
-            std::string signal = line.substr(tab + 1);
-            add_item(ssid, signal + " dBm");
-            added++;
+            networks_.push_back({line.substr(0, tab), line.substr(tab + 1)});
         }
-        if (!added)
-            app_.show_toast("No networks found");
+        if (networks_.empty())
+            app_.show_toast(wifi_state_ == "no adapter" ? "No WiFi adapter" : "No networks found");
+        rebuild();
         app_.mark_dirty();
     });
 }
 
 void BL::NetworkSettings::on_select(int index)
 {
-    if (index == item_scan) {
+    if (index == scan_index_) {
         scan();
         return;
     }
-    if (index >= 3) {
+    int ni = index - first_network_;
+    if (ni >= 0 && ni < (int) networks_.size()) {
         // Connect to the selected network: ask for the password via the OSK
-        std::string ssid = item_text(index);
+        std::string ssid = networks_[ni].ssid;
         app_.screens().push(std::make_unique<TextInput>(
             app_, "Password for \"" + ssid + "\"",
             [this, ssid](std::string pass) {
