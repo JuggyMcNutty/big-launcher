@@ -1,0 +1,38 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  alpine-musl:
+    runs-on: ubuntu-24.04
+    container: alpine:3.24
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: |
+          apk add --no-cache build-base cmake samurai pkgconf sdl3-dev sdl3_ttf-dev libxml2-dev fmt-dev spdlog-dev \
+            libevdev-dev libpng-dev libjpeg-turbo-dev libwebp-dev curl
+          # SDL3_image isn't packaged in Alpine 3.24
+          curl -fsSL https://github.com/libsdl-org/SDL_image/releases/download/release-3.4.8/SDL3_image-3.4.8.tar.gz | tar xz
+          cmake -S SDL3_image-3.4.8 -B sdlimg -G Ninja -DCMAKE_INSTALL_PREFIX=/usr -DSDLIMAGE_VENDORED=OFF -DSDLIMAGE_SAMPLES=OFF -DSDLIMAGE_TESTS=OFF -DSDLIMAGE_AVIF=OFF -DSDLIMAGE_TIF=OFF -DSDLIMAGE_JXL=OFF
+          cmake --build sdlimg && cmake --install sdlimg
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFOYER_WERROR=ON
+      - run: cmake --build build
+      - run: SDL_VIDEO_DRIVER=dummy ./build/tests/foyer_tests
+
+  debian-glibc:
+    runs-on: ubuntu-24.04
+    container: debian:bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps (bundled SDL3 family; bookworm has no SDL3)
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq build-essential cmake ninja-build pkg-config git libxml2-dev libfmt-dev libspdlog-dev \
+            libevdev-dev libfreetype-dev libharfbuzz-dev libpng-dev libjpeg-dev libwebp-dev libdrm-dev libgbm-dev \
+            libegl-dev libgles-dev libwayland-dev libxkbcommon-dev libx11-dev libxext-dev libpulse-dev libudev-dev
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DFOYER_BUNDLE_SDL=ON
+      - run: cmake --build build
+      - run: SDL_VIDEO_DRIVER=dummy ./build/tests/foyer_tests
