@@ -4,7 +4,7 @@
 #include <mutex>
 #include <SDL3/SDL.h>
 
-namespace BL {
+namespace Foyer {
     class SoundFile {  
     private:
         Uint8 *buffer = nullptr;

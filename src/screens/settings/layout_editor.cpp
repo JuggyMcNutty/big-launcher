@@ -4,29 +4,29 @@
 #include "../../render/util.hpp"
 
 // ---- LayoutEditor (menu list) ------------------------------------------
-BL::LayoutEditor::LayoutEditor(App &app): ListScreen(app)
+Foyer::LayoutEditor::LayoutEditor(App &app): ListScreen(app)
 {
     set_title("Layout");
     set_footer("A: open menu  B: save & back");
 }
 
-void BL::LayoutEditor::rebuild()
+void Foyer::LayoutEditor::rebuild()
 {
     clear_items();
     for (const auto &m : app_.layout().menus)
         add_item(m.title, std::to_string(m.entries.size()) + " items");
 }
 
-void BL::LayoutEditor::on_show() { rebuild(); }
+void Foyer::LayoutEditor::on_show() { rebuild(); }
 
-void BL::LayoutEditor::on_select(int index)
+void Foyer::LayoutEditor::on_select(int index)
 {
     if (index < 0 || index >= (int) app_.layout().menus.size()) return;
     app_.play_select();
     app_.screens().push(std::make_unique<LayoutMenuEditor>(app_, index));
 }
 
-bool BL::LayoutEditor::on_back_override()
+bool Foyer::LayoutEditor::on_back_override()
 {
     // Save on the way out.
     app_.save_layout();
@@ -35,13 +35,13 @@ bool BL::LayoutEditor::on_back_override()
 }
 
 // ---- LayoutMenuEditor (entry list) -------------------------------------
-BL::LayoutMenuEditor::LayoutMenuEditor(App &app, int menu_index): ListScreen(app), menu_index_(menu_index)
+Foyer::LayoutMenuEditor::LayoutMenuEditor(App &app, int menu_index): ListScreen(app), menu_index_(menu_index)
 {
     set_title("Menu: " + app.layout().menus[menu_index].title);
     set_footer("A: edit entry  B: back");
 }
 
-void BL::LayoutMenuEditor::rebuild()
+void Foyer::LayoutMenuEditor::rebuild()
 {
     clear_items();
     const auto &menu = app_.layout().menus[menu_index_];
@@ -50,9 +50,9 @@ void BL::LayoutMenuEditor::rebuild()
     add_item("+ Add entry");
 }
 
-void BL::LayoutMenuEditor::on_show() { rebuild(); }
+void Foyer::LayoutMenuEditor::on_show() { rebuild(); }
 
-void BL::LayoutMenuEditor::on_select(int index)
+void Foyer::LayoutMenuEditor::on_select(int index)
 {
     auto &menu = app_.layout().menus[menu_index_];
     if (index < (int) menu.entries.size()) {
@@ -80,14 +80,14 @@ void BL::LayoutMenuEditor::on_select(int index)
 }
 
 // ---- LayoutEntryActions -------------------------------------------------
-BL::LayoutEntryActions::LayoutEntryActions(App &app, int menu_index, int entry_index)
+Foyer::LayoutEntryActions::LayoutEntryActions(App &app, int menu_index, int entry_index)
     : ListScreen(app), menu_index_(menu_index), entry_index_(entry_index)
 {
     set_title("Entry: " + app.layout().menus[menu_index].entries[entry_index].title);
     set_footer("A: do action  B: back");
 }
 
-void BL::LayoutEntryActions::on_show()
+void Foyer::LayoutEntryActions::on_show()
 {
     clear_items();
     add_item("Edit title");
@@ -97,7 +97,7 @@ void BL::LayoutEntryActions::on_show()
     add_item("Delete");
 }
 
-void BL::LayoutEntryActions::on_select(int index)
+void Foyer::LayoutEntryActions::on_select(int index)
 {
     auto &menu = app_.layout().menus[menu_index_];
     if (entry_index_ < 0 || entry_index_ >= (int) menu.entries.size()) return;

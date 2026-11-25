@@ -4,39 +4,39 @@
 #include "../render/renderer.hpp"
 #include "../render/theme.hpp"
 
-BL::ListScreen::ListScreen(App &app): Screen(app) {}
+Foyer::ListScreen::ListScreen(App &app): Screen(app) {}
 
-void BL::ListScreen::clear_items()
+void Foyer::ListScreen::clear_items()
 {
     items_.clear();
     index_ = 0;
     view_offset_ = 0;
 }
 
-void BL::ListScreen::add_item(const std::string &text, const std::string &value, const std::string &subtext)
+void Foyer::ListScreen::add_item(const std::string &text, const std::string &value, const std::string &subtext)
 {
     items_.push_back({text, value, subtext, true});
 }
 
-void BL::ListScreen::set_enabled(int i, bool e)
+void Foyer::ListScreen::set_enabled(int i, bool e)
 {
     if (i >= 0 && i < (int) items_.size())
         items_[i].enabled = e;
 }
 
-void BL::ListScreen::set_value(int i, const std::string &v)
+void Foyer::ListScreen::set_value(int i, const std::string &v)
 {
     if (i >= 0 && i < (int) items_.size())
         items_[i].value = v;
 }
 
-void BL::ListScreen::set_text(int i, const std::string &t)
+void Foyer::ListScreen::set_text(int i, const std::string &t)
 {
     if (i >= 0 && i < (int) items_.size())
         items_[i].text = t;
 }
 
-void BL::ListScreen::set_selected(int i)
+void Foyer::ListScreen::set_selected(int i)
 {
     if (i < 0) i = 0;
     if (i >= (int) items_.size()) i = (int) items_.size() - 1;
@@ -44,19 +44,19 @@ void BL::ListScreen::set_selected(int i)
     clamp_view();
 }
 
-int BL::ListScreen::row_height() const
+int Foyer::ListScreen::row_height() const
 {
     return app_.theme().item_font_size + 48;
 }
 
-int BL::ListScreen::rows_visible() const
+int Foyer::ListScreen::rows_visible() const
 {
     int top = 170;
     int bottom = app_.screen_h() - 120;
     return std::max(1, (bottom - top) / row_height());
 }
 
-void BL::ListScreen::clamp_view()
+void Foyer::ListScreen::clamp_view()
 {
     int vis = rows_visible();
     if (index_ < view_offset_)
@@ -66,7 +66,7 @@ void BL::ListScreen::clamp_view()
     if (view_offset_ < 0) view_offset_ = 0;
 }
 
-void BL::ListScreen::move(int delta)
+void Foyer::ListScreen::move(int delta)
 {
     int target = index_ + delta;
     if (target < 0) target = 0;
@@ -86,7 +86,7 @@ void BL::ListScreen::move(int delta)
     }
 }
 
-bool BL::ListScreen::on_action(Action action)
+bool Foyer::ListScreen::on_action(Action action)
 {
     switch (action) {
         case Action::Up:    move(-1); return true;
@@ -104,7 +104,7 @@ bool BL::ListScreen::on_action(Action action)
     }
 }
 
-void BL::ListScreen::draw()
+void Foyer::ListScreen::draw()
 {
     auto &r = app_.renderer();
     auto &t = app_.theme();

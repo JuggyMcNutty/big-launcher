@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace BL {
+namespace Foyer {
     // Manages a launched child process: fork + setsid, reaping, kill-by-group.
     // The app's running state is derived from Process::alive() (no focus
     // heuristics).

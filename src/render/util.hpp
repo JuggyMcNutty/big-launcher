@@ -6,7 +6,7 @@
 #include <filesystem>
 #include <SDL3/SDL.h>
 
-namespace BL {
+namespace Foyer {
     enum class FileType{
         CONFIG,
         FONT,

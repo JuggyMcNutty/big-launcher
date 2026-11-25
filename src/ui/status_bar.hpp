@@ -5,7 +5,7 @@
 #include "../render/renderer.hpp"
 #include "text_sprite.hpp"
 
-namespace BL {
+namespace Foyer {
     class Theme;
 
     // Top status bar: network (left) + audio (right). Drawn by App on top of

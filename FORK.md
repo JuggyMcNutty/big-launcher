@@ -1,3 +1,13 @@
+# History: from big-launcher to Foyer
+
+> Renamed 2026-11-24: `JuggyMcNutty/big-launcher` → **`JuggyMcNutty/foyer`** (GitHub redirects old
+> URLs). The `BL::` namespace became `Foyer::`, the binary is `foyer`, and the CMake options are
+> `FOYER_*`. Branches were consolidated into **`main`**. The old history is kept as tags:
+> `archive/htpc-v1` (the v1 `htpc` branch), `upstream-2025-08` (upstream `master`), and `v2.0.0`
+> (the last big-launcher-named release).
+>
+> The sections below describe the fork as it was before the rename.
+
 # HTPC fork
 
 This is a fork of [complexlogic/big-launcher](https://github.com/complexlogic/big-launcher)

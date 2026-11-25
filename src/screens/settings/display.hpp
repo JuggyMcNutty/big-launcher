@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class DisplaySettings : public ListScreen {
     public:
         explicit DisplaySettings(App &app);

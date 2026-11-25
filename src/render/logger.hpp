@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
-namespace BL {
+namespace Foyer {
     namespace logger {
         template <typename... Args>
         inline void debug(spdlog::format_string_t<Args...> fmt, Args &&...args) {

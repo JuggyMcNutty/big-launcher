@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace BL {
+namespace Foyer {
     // Builds htpc-ctl command strings. htpc-ctl is the single POSIX-sh system
     // control backend on the box (supersedes htpc-net). It is always invoked
     // through the job queue, never synchronously.
@@ -11,7 +11,7 @@ namespace BL {
                     const std::vector<std::string> &args = {});
 }
 
-namespace BL {
+namespace Foyer {
     // Parsed `htpc-ctl net status` output.
     struct NetIface {
         std::string name, type, state, ip, mac, gateway, dns, speed;

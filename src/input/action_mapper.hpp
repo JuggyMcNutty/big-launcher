@@ -6,7 +6,7 @@
 
 #include "action.hpp"
 
-namespace BL {
+namespace Foyer {
     // Maps raw input (keyboard keys, gamepad buttons/axes) to semantic Actions.
     class ActionMapper {
     public:

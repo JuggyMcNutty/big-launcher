@@ -3,7 +3,7 @@
 
 #include "anim.hpp"
 
-int BL::Anim::add(std::function<void(float)> on_update, float start, float end,
+int Foyer::Anim::add(std::function<void(float)> on_update, float start, float end,
                   Uint32 duration, Ease ease, std::function<void()> on_complete)
 {
     auto t = std::make_unique<Tween>();
@@ -20,7 +20,7 @@ int BL::Anim::add(std::function<void(float)> on_update, float start, float end,
     return tweens_.back()->id;
 }
 
-float BL::Anim::ease_value(Ease e, float t)
+float Foyer::Anim::ease_value(Ease e, float t)
 {
     t = std::clamp(t, 0.f, 1.f);
     switch (e) {
@@ -32,7 +32,7 @@ float BL::Anim::ease_value(Ease e, float t)
     return t;
 }
 
-void BL::Anim::update()
+void Foyer::Anim::update()
 {
     Uint64 now = SDL_GetTicks();
     for (auto it = tweens_.begin(); it != tweens_.end();) {
@@ -54,17 +54,17 @@ void BL::Anim::update()
     }
 }
 
-bool BL::Anim::active() const
+bool Foyer::Anim::active() const
 {
     return !tweens_.empty();
 }
 
-void BL::Anim::cancel_all()
+void Foyer::Anim::cancel_all()
 {
     tweens_.clear();
 }
 
-void BL::Anim::cancel(int id)
+void Foyer::Anim::cancel(int id)
 {
     tweens_.erase(std::remove_if(tweens_.begin(), tweens_.end(),
         [id](const std::unique_ptr<Tween> &t){ return t->id == id; }), tweens_.end());

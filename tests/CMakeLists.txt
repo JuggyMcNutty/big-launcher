@@ -1,4 +1,4 @@
-add_executable(bl_tests
+add_executable(foyer_tests
   test_core.cpp
   ${PROJECT_SOURCE_DIR}/src/core/config.cpp
   ${PROJECT_SOURCE_DIR}/src/core/layout_model.cpp
@@ -7,11 +7,11 @@ add_executable(bl_tests
   ${PROJECT_SOURCE_DIR}/src/platform/sysctl.cpp
   ${PROJECT_SOURCE_DIR}/src/render/util.cpp
 )
-target_include_directories(bl_tests PRIVATE ${PROJECT_BINARY_DIR})
-target_link_libraries(bl_tests
+target_include_directories(foyer_tests PRIVATE ${PROJECT_BINARY_DIR})
+target_link_libraries(foyer_tests
   PkgConfig::SDL3
   PkgConfig::LIBXML2
   PkgConfig::SPDLOG
   PkgConfig::FMT
 )
-add_test(NAME bl_tests COMMAND bl_tests)
+add_test(NAME foyer_tests COMMAND foyer_tests)

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace BL {
+namespace Foyer {
     // Power operations via OpenRC (the box runs OpenRC, not systemd).
     // These spawn short-lived helper processes; the caller should run them
     // through the job queue or directly (they are quick).

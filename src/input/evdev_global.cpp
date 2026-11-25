@@ -10,33 +10,33 @@
 #include <sys/epoll.h>
 #include <cstring>
 
-BL::EvdevGlobal::EvdevGlobal() = default;
+Foyer::EvdevGlobal::EvdevGlobal() = default;
 
-BL::EvdevGlobal::~EvdevGlobal()
+Foyer::EvdevGlobal::~EvdevGlobal()
 {
     stop();
 }
 
-void BL::EvdevGlobal::start()
+void Foyer::EvdevGlobal::start()
 {
     if (running_) return;
     running_ = true;
     thread_ = std::thread(&EvdevGlobal::thread_loop, this);
 }
 
-void BL::EvdevGlobal::stop()
+void Foyer::EvdevGlobal::stop()
 {
     running_ = false;
     if (thread_.joinable())
         thread_.join();
 }
 
-void BL::EvdevGlobal::thread_loop()
+void Foyer::EvdevGlobal::thread_loop()
 {
     // Open all input devices non-grabbing
     DIR *dir = opendir("/dev/input");
     if (!dir) {
-        BL::logger::warn("evdev: cannot open /dev/input");
+        Foyer::logger::warn("evdev: cannot open /dev/input");
         return;
     }
     int epfd = epoll_create1(0);
@@ -55,7 +55,7 @@ void BL::EvdevGlobal::thread_loop()
             fds.push_back(fd);
     }
     closedir(dir);
-    BL::logger::info("evdev: monitoring {} devices", fds.size());
+    Foyer::logger::info("evdev: monitoring {} devices", fds.size());
 
     struct epoll_event events[16];
     while (running_) {

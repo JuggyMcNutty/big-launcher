@@ -11,7 +11,7 @@
 #include "layout_model.hpp"
 #include "../render/logger.hpp"
 
-namespace BL {
+namespace Foyer {
     void free_xml_char(xmlChar *c) { xmlFree((void*) c); }
     using pXmlChar = std::unique_ptr<xmlChar, decltype(&free_xml_char)>;
     using pXmlDoc  = std::unique_ptr<xmlDoc,  decltype(&xmlFreeDoc)>;
@@ -28,15 +28,15 @@ namespace BL {
     }
 }
 
-void BL::LayoutModel::parse(const std::string &file)
+void Foyer::LayoutModel::parse(const std::string &file)
 {
-    BL::logger::debug("Parsing layout file '{}'", file);
+    Foyer::logger::debug("Parsing layout file '{}'", file);
     pXmlDoc doc(xmlParseFile(file.c_str()), &xmlFreeDoc);
     if (!doc)
-        BL::logger::critical("Failed to parse layout file '{}'", file);
+        Foyer::logger::critical("Failed to parse layout file '{}'", file);
     xmlNodePtr root = xmlDocGetRootElement(doc.get());
     if (!root || xmlStrcmp(root->name, (const xmlChar*) "layout"))
-        BL::logger::critical("Layout file root element is not <layout>");
+        Foyer::logger::critical("Layout file root element is not <layout>");
 
     menus.clear();
     sidebar_commands.clear();
@@ -86,11 +86,11 @@ void BL::LayoutModel::parse(const std::string &file)
                 sidebar_commands.push_back(std::move(sc));
         }
     }
-    BL::logger::debug("Parsed {} menus, {} sidebar commands",
+    Foyer::logger::debug("Parsed {} menus, {} sidebar commands",
                       menus.size(), sidebar_commands.size());
 }
 
-void BL::LayoutModel::write(const std::string &file) const
+void Foyer::LayoutModel::write(const std::string &file) const
 {
     pXmlDoc doc(xmlNewDoc((const xmlChar*) "1.0"), &xmlFreeDoc);
     xmlNodePtr root = xmlNewNode(nullptr, (const xmlChar*) "layout");
@@ -143,14 +143,14 @@ void BL::LayoutModel::write(const std::string &file) const
         std::filesystem::copy_file(file, bak, std::filesystem::copy_options::overwrite_existing, ec);
     std::filesystem::path tmp(file); tmp += ".tmp";
     if (xmlSaveFormatFileEnc((const char*) tmp.string().c_str(), doc.get(), "UTF-8", 1) < 0)
-        BL::logger::error("Failed to write layout file '{}'", file);
+        Foyer::logger::error("Failed to write layout file '{}'", file);
     std::filesystem::rename(tmp, file, ec);
     if (ec)
-        BL::logger::error("Failed to rename layout file: {}", ec.message());
-    BL::logger::debug("Wrote layout file '{}'", file);
+        Foyer::logger::error("Failed to rename layout file: {}", ec.message());
+    Foyer::logger::debug("Wrote layout file '{}'", file);
 }
 
-BL::Menu* BL::LayoutModel::find_menu(const std::string &title)
+Foyer::Menu* Foyer::LayoutModel::find_menu(const std::string &title)
 {
     for (Menu &m : menus)
         if (m.title == title) return &m;

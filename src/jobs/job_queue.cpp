@@ -7,17 +7,17 @@
 #include "job_queue.hpp"
 #include "../render/logger.hpp"
 
-BL::JobQueue::JobQueue()
+Foyer::JobQueue::JobQueue()
 {
     worker_ = std::thread(&JobQueue::worker_loop, this);
 }
 
-BL::JobQueue::~JobQueue()
+Foyer::JobQueue::~JobQueue()
 {
     stop();
 }
 
-void BL::JobQueue::stop()
+void Foyer::JobQueue::stop()
 {
     {
         std::unique_lock lock(queue_mutex_);
@@ -29,12 +29,12 @@ void BL::JobQueue::stop()
         worker_.join();
 }
 
-uint32_t BL::JobQueue::run(const std::string &command, std::function<void(const JobResult&)> on_done)
+uint32_t Foyer::JobQueue::run(const std::string &command, std::function<void(const JobResult&)> on_done)
 {
     return run_stream(command, nullptr, std::move(on_done));
 }
 
-uint32_t BL::JobQueue::run_stream(const std::string &command,
+uint32_t Foyer::JobQueue::run_stream(const std::string &command,
                                   std::function<void(const std::string&)> on_progress,
                                   std::function<void(const JobResult&)> on_done)
 {
@@ -51,11 +51,11 @@ uint32_t BL::JobQueue::run_stream(const std::string &command,
         queue_.push_back(id);
     }
     cv_.notify_one();
-    BL::logger::debug("Job {} queued: {}", id, command);
+    Foyer::logger::debug("Job {} queued: {}", id, command);
     return id;
 }
 
-void BL::JobQueue::worker_loop()
+void Foyer::JobQueue::worker_loop()
 {
     while (true) {
         uint32_t id;
@@ -79,7 +79,7 @@ void BL::JobQueue::worker_loop()
     }
 }
 
-void BL::JobQueue::execute(std::shared_ptr<Job> job)
+void Foyer::JobQueue::execute(std::shared_ptr<Job> job)
 {
     FILE *fp = popen(job->command.c_str(), "r");
     if (!fp) {
@@ -131,7 +131,7 @@ void BL::JobQueue::execute(std::shared_ptr<Job> job)
         if (!job->result.ok) {
             std::string tail = job->output.size() > 300 ? job->output.substr(job->output.size() - 300) : job->output;
             while (!tail.empty() && (tail.back() == '\n' || tail.back() == ' ')) tail.pop_back();
-            BL::logger::warn("Job {} failed (exit {}): {}{}{}", job->id, code, job->command,
+            Foyer::logger::warn("Job {} failed (exit {}): {}{}{}", job->id, code, job->command,
                              tail.empty() ? "" : " -> ", tail);
         }
     }
@@ -139,7 +139,7 @@ void BL::JobQueue::execute(std::shared_ptr<Job> job)
     SDL_PushEvent(&e);
 }
 
-bool BL::JobQueue::handle_event(const SDL_Event &event)
+bool Foyer::JobQueue::handle_event(const SDL_Event &event)
 {
     if (event.type != EVT_JOB_DONE && event.type != EVT_JOB_PROGRESS)
         return false;

@@ -1,7 +1,7 @@
 #include "shapes.hpp"
 #include "../render/image.hpp"
 
-namespace BL {
+namespace Foyer {
     static bool inside_rounded(int x, int y, int w, int h, int r)
     {
         if (r <= 0) return true;
@@ -38,7 +38,7 @@ namespace BL {
         Uint32 fill = SDL_MapSurfaceRGBA(s, color.r, color.g, color.b, color.a);
         fill_rounded(s, w, h, radius, fill, false);
         TexturePtr t = r.create_texture(*s);
-        BL::free_surface(s);
+        Foyer::free_surface(s);
         return t;
     }
 
@@ -62,7 +62,7 @@ namespace BL {
             }
         }
         TexturePtr t = r.create_texture(*s);
-        BL::free_surface(s);
+        Foyer::free_surface(s);
         return t;
     }
 }

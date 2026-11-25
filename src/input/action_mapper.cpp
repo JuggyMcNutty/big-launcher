@@ -1,7 +1,7 @@
 #include "action_mapper.hpp"
 #include <cmath>
 
-std::optional<BL::Action> BL::ActionMapper::keyboard(SDL_Keycode key)
+std::optional<Foyer::Action> Foyer::ActionMapper::keyboard(SDL_Keycode key)
 {
     switch (key) {
         case SDLK_UP:    return Action::Up;
@@ -16,7 +16,7 @@ std::optional<BL::Action> BL::ActionMapper::keyboard(SDL_Keycode key)
     }
 }
 
-std::optional<BL::Action> BL::ActionMapper::gamepad_button(SDL_GamepadButton button)
+std::optional<Foyer::Action> Foyer::ActionMapper::gamepad_button(SDL_GamepadButton button)
 {
     switch (button) {
         case SDL_GAMEPAD_BUTTON_DPAD_UP:    return Action::Up;
@@ -33,7 +33,7 @@ std::optional<BL::Action> BL::ActionMapper::gamepad_button(SDL_GamepadButton but
     }
 }
 
-std::optional<BL::Action> BL::ActionMapper::gamepad_axis(SDL_GamepadAxis axis, int value, int deadzone)
+std::optional<Foyer::Action> Foyer::ActionMapper::gamepad_axis(SDL_GamepadAxis axis, int value, int deadzone)
 {
     if (std::abs(value) < deadzone)
         return std::nullopt;

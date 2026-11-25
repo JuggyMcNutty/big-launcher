@@ -3,7 +3,7 @@
 
 #include "sysctl.hpp"
 
-namespace BL {
+namespace Foyer {
     static std::string shell_quote(const std::string &s)
     {
         if (s.empty()) return "''";
@@ -31,7 +31,7 @@ namespace BL {
     }
 }
 
-BL::NetStatus BL::parse_net_status(const std::string &output)
+Foyer::NetStatus Foyer::parse_net_status(const std::string &output)
 {
     NetStatus st;
     std::istringstream in(output);

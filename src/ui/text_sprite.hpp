@@ -7,7 +7,7 @@
 
 #include "../render/renderer.hpp"
 
-namespace BL {
+namespace Foyer {
     class Font;
 
     // Renders a string to a texture once; draw it at any position with color

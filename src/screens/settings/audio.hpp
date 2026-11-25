@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class AudioSettings : public ListScreen {
     public:
         explicit AudioSettings(App &app);

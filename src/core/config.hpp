@@ -6,7 +6,7 @@
 
 #include <SDL3/SDL.h>
 
-namespace BL {
+namespace Foyer {
     struct Hotkey {
         SDL_Keycode keycode = 0;
         std::string command;

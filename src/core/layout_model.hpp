@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace BL {
+namespace Foyer {
     struct Card {
         std::string icon;        // icon path
         std::string background;  // #RRGGBB color or image path

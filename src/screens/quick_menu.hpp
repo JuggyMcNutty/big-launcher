@@ -2,7 +2,7 @@
 
 #include "../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     // Quick menu: shown as a gamescope external overlay while an app runs.
     // Actions: back to home (kill app), volume, mute, power.
     class QuickMenu : public ListScreen {

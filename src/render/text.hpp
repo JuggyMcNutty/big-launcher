@@ -4,7 +4,7 @@
 #include <SDL3/SDL.h>
 
 struct TTF_Font;
-namespace BL {
+namespace Foyer {
     class Font {
         private:
             TTF_Font *font = nullptr;

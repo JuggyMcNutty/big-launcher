@@ -1,6 +1,6 @@
 #pragma once
 
-namespace BL {
+namespace Foyer {
     class Object {
     protected:
         Object() = default;

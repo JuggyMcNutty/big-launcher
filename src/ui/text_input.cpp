@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cctype>
 
-namespace BL {
+namespace Foyer {
     TextInput::TextInput(App &app, std::string title,
                          std::function<void(std::string)> on_submit,
                          std::function<void()> on_cancel)

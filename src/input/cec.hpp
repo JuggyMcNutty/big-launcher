@@ -5,7 +5,7 @@
 
 #include "action.hpp"
 
-namespace BL {
+namespace Foyer {
 // HDMI-CEC backend (libcec). Maps TV remote keys to actions and issues TV
 // power/standby on sleep. Untested until a CEC adapter is present.
 class Cec {

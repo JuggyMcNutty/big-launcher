@@ -1,60 +1,60 @@
 #include "renderer_sdl.hpp"
 #include "logger.hpp"
 
-void BL::TextureSDL::set_color_mod(const SDL_Color &color)
+void Foyer::TextureSDL::set_color_mod(const SDL_Color &color)
 {
     SDL_SetTextureBlendMode(texture.get(), SDL_BLENDMODE_BLEND);
     SDL_SetTextureColorMod(texture.get(), color.r, color.g, color.b);
     SDL_SetTextureAlphaMod(texture.get(), color.a);
 }
 
-BL::RendererSDL::RendererSDL(SDL_Window &window):
+Foyer::RendererSDL::RendererSDL(SDL_Window &window):
     Renderer(window),
     renderer(SDL_CreateRenderer(&window, nullptr), SDL_DestroyRenderer)
 {
     if (!renderer)
-        BL::logger::critical("Could not create renderer (SDL Error: {})", SDL_GetError());
+        Foyer::logger::critical("Could not create renderer (SDL Error: {})", SDL_GetError());
 
     SDL_PropertiesID props = SDL_GetRendererProperties(renderer.get());
     const auto formats = reinterpret_cast<const SDL_PixelFormat*>(SDL_GetPointerProperty(props, SDL_PROP_RENDERER_TEXTURE_FORMATS_POINTER, nullptr));
     if (!formats)
-        BL::logger::critical("Could not detect pixel formats supported by renderer");
+        Foyer::logger::critical("Could not detect pixel formats supported by renderer");
     int i = 0;
     for (; formats[i] != SDL_PIXELFORMAT_UNKNOWN; i++) {
         if (formats[i] == SDL_PIXELFORMAT_ARGB8888)
             break;
     }
     if (formats[i] == SDL_PIXELFORMAT_UNKNOWN)
-        BL::logger::critical("GPU does not support the required pixel format");
+        Foyer::logger::critical("GPU does not support the required pixel format");
 
     SDL_SetRenderVSync(renderer.get(), 1);
     SDL_SetRenderDrawBlendMode(renderer.get(), SDL_BLENDMODE_BLEND);
     SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
 }
 
-BL::RendererSDL::~RendererSDL() = default;
+Foyer::RendererSDL::~RendererSDL() = default;
 
-void BL::RendererSDL::set_draw_color(const SDL_Color &color)
+void Foyer::RendererSDL::set_draw_color(const SDL_Color &color)
 {
     SDL_SetRenderDrawColor(renderer.get(), color.r, color.g, color.b, color.a);
 }
 
-void BL::RendererSDL::clear()
+void Foyer::RendererSDL::clear()
 {
     SDL_RenderClear(renderer.get());
 }
 
-void BL::RendererSDL::present()
+void Foyer::RendererSDL::present()
 {
     SDL_RenderPresent(renderer.get());
 }
 
-BL::TexturePtr BL::RendererSDL::create_texture(SDL_Surface &surface)
+Foyer::TexturePtr Foyer::RendererSDL::create_texture(SDL_Surface &surface)
 {
     return std::make_unique<TextureSDL>(SDL_CreateTextureFromSurface(renderer.get(), &surface));
 }
 
-BL::TexturePtr BL::RendererSDL::create_texture(SDL_Surface &surface, int w, int h)
+Foyer::TexturePtr Foyer::RendererSDL::create_texture(SDL_Surface &surface, int w, int h)
 {
     SDL_Texture *src_texture = SDL_CreateTextureFromSurface(renderer.get(), &surface);
     SDL_Texture *dst_texture = SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
@@ -65,13 +65,13 @@ BL::TexturePtr BL::RendererSDL::create_texture(SDL_Surface &surface, int w, int 
     return std::make_unique<TextureSDL>(dst_texture);
 }
 
-BL::TexturePtr BL::RendererSDL::create_texture(int w, int h)
+Foyer::TexturePtr Foyer::RendererSDL::create_texture(int w, int h)
 {
     SDL_Texture *texture = SDL_CreateTexture(renderer.get(), SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
     return std::make_unique<TextureSDL>(texture);
 }
 
-void BL::RendererSDL::draw(const Texture &texture)
+void Foyer::RendererSDL::draw(const Texture &texture)
 {
     SDL_SetRenderTarget(renderer.get(), nullptr);
     SDL_RenderTexture(renderer.get(),
@@ -81,42 +81,42 @@ void BL::RendererSDL::draw(const Texture &texture)
     );
 }
 
-void BL::RendererSDL::fill_rect(const SDL_FRect &rect, const SDL_Color &color)
+void Foyer::RendererSDL::fill_rect(const SDL_FRect &rect, const SDL_Color &color)
 {
     SDL_SetRenderDrawColor(renderer.get(), color.r, color.g, color.b, color.a);
     SDL_FRect r = rect;
     SDL_RenderFillRect(renderer.get(), &r);
 }
 
-void BL::RendererSDL::draw_line(const SDL_FRect &a, const SDL_FRect &b, const SDL_Color &color)
+void Foyer::RendererSDL::draw_line(const SDL_FRect &a, const SDL_FRect &b, const SDL_Color &color)
 {
     SDL_SetRenderDrawColor(renderer.get(), color.r, color.g, color.b, color.a);
     SDL_RenderLine(renderer.get(), a.x, a.y, b.x, b.y);
 }
 
-void BL::RendererSDL::composit_texture(const Texture &src, const Texture &dst, SDL_FRect *coords)
+void Foyer::RendererSDL::composit_texture(const Texture &src, const Texture &dst, SDL_FRect *coords)
 {
     SDL_SetRenderTarget(renderer.get(), const_cast<SDL_Texture*>(static_cast<const TextureSDL&>(dst).get_texture()));
     SDL_RenderTexture(renderer.get(), const_cast<SDL_Texture*>(static_cast<const TextureSDL&>(src).get_texture()), nullptr, coords);
     SDL_SetRenderTarget(renderer.get(), nullptr);
 }
 
-void BL::RendererSDL::set_clip_rect(const SDL_Rect &rect)
+void Foyer::RendererSDL::set_clip_rect(const SDL_Rect &rect)
 {
     SDL_SetRenderClipRect(renderer.get(), &rect);
 }
 
-void BL::RendererSDL::disable_clip()
+void Foyer::RendererSDL::disable_clip()
 {
     SDL_SetRenderClipRect(renderer.get(), nullptr);
 }
 
-void BL::RendererSDL::set_render_scale(float scale_w, float scale_h)
+void Foyer::RendererSDL::set_render_scale(float scale_w, float scale_h)
 {
     SDL_SetRenderScale(renderer.get(), scale_w, scale_h);
 }
 
-void BL::RendererSDL::set_logical_representation(int w, int h)
+void Foyer::RendererSDL::set_logical_representation(int w, int h)
 {
     SDL_SetRenderLogicalPresentation(renderer.get(), w, h, SDL_LOGICAL_PRESENTATION_LETTERBOX);
 }

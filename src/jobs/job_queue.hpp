@@ -9,7 +9,7 @@
 #include <map>
 #include <memory>
 
-namespace BL {
+namespace Foyer {
     struct JobResult {
         bool ok = false;
         int exit_code = -1;

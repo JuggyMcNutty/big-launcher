@@ -5,7 +5,7 @@
 
 #include "../input/action.hpp"
 
-namespace BL {
+namespace Foyer {
     class App;
 
     // A screen owns a region of the UI and receives all input while on top of

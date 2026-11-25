@@ -3,7 +3,7 @@
 #include "../../platform/sysctl.hpp"
 #include "../../render/util.hpp"
 
-BL::DisplaySettings::DisplaySettings(App &app): ListScreen(app)
+Foyer::DisplaySettings::DisplaySettings(App &app): ListScreen(app)
 {
     set_title("Display");
     set_footer("Left/Right: adjust  A: select  B: back");
@@ -12,12 +12,12 @@ BL::DisplaySettings::DisplaySettings(App &app): ListScreen(app)
     add_item("Overscan", std::to_string(app_.config().overscan) + "%");
 }
 
-void BL::DisplaySettings::on_show()
+void Foyer::DisplaySettings::on_show()
 {
     refresh();
 }
 
-void BL::DisplaySettings::refresh()
+void Foyer::DisplaySettings::refresh()
 {
     app_.jobs().run(ctl("display", "mode/get"), [this](const JobResult &res) {
         if (!res.ok) return;
@@ -30,7 +30,7 @@ void BL::DisplaySettings::refresh()
     });
 }
 
-bool BL::DisplaySettings::on_action(Action action)
+bool Foyer::DisplaySettings::on_action(Action action)
 {
     if (action == Action::Left || action == Action::Right) {
         if (selected() == item_scale) {
@@ -59,7 +59,7 @@ bool BL::DisplaySettings::on_action(Action action)
     return ListScreen::on_action(action);
 }
 
-void BL::DisplaySettings::on_select(int index)
+void Foyer::DisplaySettings::on_select(int index)
 {
     if (index == item_resolution) {
         // Cycle through common modes; htpc-ctl rewrites session.conf and

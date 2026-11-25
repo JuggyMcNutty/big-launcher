@@ -3,7 +3,7 @@
 #include "../../platform/sysctl.hpp"
 #include "../../render/util.hpp"
 
-BL::AudioSettings::AudioSettings(App &app): ListScreen(app)
+Foyer::AudioSettings::AudioSettings(App &app): ListScreen(app)
 {
     set_title("Audio");
     set_footer("Left/Right: adjust  A: select  B: back");
@@ -14,12 +14,12 @@ BL::AudioSettings::AudioSettings(App &app): ListScreen(app)
     add_item("UI Volume", std::to_string(app_.config().sound_volume));
 }
 
-void BL::AudioSettings::on_show()
+void Foyer::AudioSettings::on_show()
 {
     refresh();
 }
 
-void BL::AudioSettings::refresh()
+void Foyer::AudioSettings::refresh()
 {
     app_.jobs().run(ctl("audio", "volume/get"), [this](const JobResult &res) {
         if (!res.ok) return;
@@ -54,7 +54,7 @@ void BL::AudioSettings::refresh()
     });
 }
 
-bool BL::AudioSettings::on_action(Action action)
+bool Foyer::AudioSettings::on_action(Action action)
 {
     if (action == Action::Left || action == Action::Right) {
         if (selected() == item_volume) {
@@ -84,7 +84,7 @@ bool BL::AudioSettings::on_action(Action action)
     return ListScreen::on_action(action);
 }
 
-void BL::AudioSettings::on_select(int index)
+void Foyer::AudioSettings::on_select(int index)
 {
     switch (index) {
         case item_mute:

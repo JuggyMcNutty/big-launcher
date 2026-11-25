@@ -3,7 +3,7 @@
 #include "../../platform/sysctl.hpp"
 #include "../../render/util.hpp"
 
-BL::BluetoothSettings::BluetoothSettings(App &app): ListScreen(app)
+Foyer::BluetoothSettings::BluetoothSettings(App &app): ListScreen(app)
 {
     set_title("Bluetooth");
     set_footer("A: select  B: back");
@@ -11,12 +11,12 @@ BL::BluetoothSettings::BluetoothSettings(App &app): ListScreen(app)
     add_item("Scan");
 }
 
-void BL::BluetoothSettings::on_show()
+void Foyer::BluetoothSettings::on_show()
 {
     refresh();
 }
 
-void BL::BluetoothSettings::refresh()
+void Foyer::BluetoothSettings::refresh()
 {
     app_.jobs().run(ctl("bt", "status"), [this](const JobResult &res) {
         if (!res.ok) return;
@@ -44,7 +44,7 @@ void BL::BluetoothSettings::refresh()
     });
 }
 
-void BL::BluetoothSettings::scan()
+void Foyer::BluetoothSettings::scan()
 {
     app_.show_toast("Scanning for devices...");
     app_.jobs().run(ctl("bt", "scan"), [this](const JobResult &res) {
@@ -63,7 +63,7 @@ void BL::BluetoothSettings::scan()
     });
 }
 
-void BL::BluetoothSettings::on_select(int index)
+void Foyer::BluetoothSettings::on_select(int index)
 {
     if (index == item_power) {
         app_.jobs().run(ctl("bt", "power", {powered_ ? "off" : "on"}), [this](const JobResult &r) {

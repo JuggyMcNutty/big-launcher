@@ -4,7 +4,7 @@
 
 #include "../render/renderer.hpp"
 
-namespace BL {
+namespace Foyer {
     // Create a rounded-rect texture filled with color (alpha supported).
     TexturePtr create_rounded_rect(Renderer &r, int w, int h, int radius, const SDL_Color &color);
     // Create a rounded-rect outline (border) texture.

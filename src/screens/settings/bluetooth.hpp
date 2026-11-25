@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class BluetoothSettings : public ListScreen {
     public:
         explicit BluetoothSettings(App &app);

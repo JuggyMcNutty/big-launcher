@@ -7,7 +7,7 @@
 #include "renderer.hpp"
 #include "image.hpp"
 
-namespace BL {
+namespace Foyer {
     class Texture;
     class Renderer;
     class Drawable: public Object {
@@ -23,7 +23,7 @@ namespace BL {
     public:
         ~Drawable()
         {
-            BL::free_surface(surface);
+            Foyer::free_surface(surface);
             delete texture;
         }
         void draw()

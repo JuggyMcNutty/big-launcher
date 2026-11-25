@@ -11,7 +11,7 @@
 #include "../src/input/action_mapper.hpp"
 #include "../src/platform/process.hpp"
 
-using namespace BL;
+using namespace Foyer;
 
 static std::string tmp_path(const std::string &name)
 {

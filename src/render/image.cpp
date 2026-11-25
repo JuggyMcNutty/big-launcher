@@ -12,13 +12,13 @@
 #include "../external/nanosvgrast.h"
 #include "../external/fast_gaussian_blur_template.h"
 
-SDL_Surface* BL::load_surface(std::string &file)
+SDL_Surface* Foyer::load_surface(std::string &file)
 {
     SDL_Surface *img = nullptr;
     SDL_Surface *out = nullptr;
     img = IMG_Load(file.c_str());
     if (!img) {
-        BL::logger::error("Could not load image from {} (SDL Error: {})", file, SDL_GetError());
+        Foyer::logger::error("Could not load image from {} (SDL Error: {})", file, SDL_GetError());
         return out;
     }
 
@@ -28,7 +28,7 @@ SDL_Surface* BL::load_surface(std::string &file)
         Uint32 color = SDL_MapSurfaceRGBA(out, 0xFF, 0xFF, 0xFF, 0);
         SDL_FillSurfaceRect(out, nullptr, color);
         SDL_BlitSurface(img, nullptr, out, nullptr);
-        BL::free_surface(img);
+        Foyer::free_surface(img);
     }
     else
         out = img;
@@ -36,42 +36,42 @@ SDL_Surface* BL::load_surface(std::string &file)
     return out;
 }
 
-BL::SVGRasterizer::SVGRasterizer()
+Foyer::SVGRasterizer::SVGRasterizer()
 {
     rasterizer = nsvgCreateRasterizer();
     if (!rasterizer)
-        BL::logger::critical("Could not initialize SVG rasterizer");
+        Foyer::logger::critical("Could not initialize SVG rasterizer");
 }
 
-BL::SVGRasterizer::~SVGRasterizer()
+Foyer::SVGRasterizer::~SVGRasterizer()
 {
     if (rasterizer)
         nsvgDeleteRasterizer(rasterizer);
 }
 
 
-SDL_Surface* BL::SVGRasterizer::rasterize_svg_from_file(const std::string &file, int w, int h)
+SDL_Surface* Foyer::SVGRasterizer::rasterize_svg_from_file(const std::string &file, int w, int h)
 {
     NSVGimage *image = nsvgParseFromFile((char*) file.c_str(), "px", 96.0f);
     if (!image) {
-        BL::logger::error("Could not load SVG");
+        Foyer::logger::error("Could not load SVG");
         return nullptr;
     }
     return rasterize_svg_image(image, w, h);
 }
 
 // A function to rasterize an SVG from an existing text buffer
-SDL_Surface* BL::SVGRasterizer::rasterize_svg(const std::string &buffer, int w, int h)
+SDL_Surface* Foyer::SVGRasterizer::rasterize_svg(const std::string &buffer, int w, int h)
 {
     NSVGimage *image = nsvgParse((char*) buffer.c_str(), "px", 96.0f);
     if (!image) {
-        BL::logger::error("Could not parse SVG");
+        Foyer::logger::error("Could not parse SVG");
         return nullptr;
     }
     return rasterize_svg_image(image, w, h);
 }
 
-SDL_Surface* BL::SVGRasterizer::rasterize_svg_image(NSVGimage *image, int w, int h)
+SDL_Surface* Foyer::SVGRasterizer::rasterize_svg_image(NSVGimage *image, int w, int h)
 {
     unsigned char *pixel_buffer = nullptr;
     int width, height, pitch;
@@ -103,7 +103,7 @@ SDL_Surface* BL::SVGRasterizer::rasterize_svg_image(NSVGimage *image, int w, int
     pitch = 4*width;
     pixel_buffer = reinterpret_cast<unsigned char*>(malloc(4*width*height));
     if (!pixel_buffer) {
-        BL::logger::error("Could not alloc SVG pixel buffer");
+        Foyer::logger::error("Could not alloc SVG pixel buffer");
         return nullptr;
     }
 
@@ -120,19 +120,19 @@ SDL_Surface* BL::SVGRasterizer::rasterize_svg_image(NSVGimage *image, int w, int
     return surface;
 }
 
-NSVGimage* BL::SVGRasterizer::parse_from_file(const char* filename, const char* units, float dpi)
+NSVGimage* Foyer::SVGRasterizer::parse_from_file(const char* filename, const char* units, float dpi)
 {
     return nsvgParseFromFile(filename, units, dpi);
 }
 
-void BL::SVGRasterizer::delete_image(NSVGimage *image)
+void Foyer::SVGRasterizer::delete_image(NSVGimage *image)
 {
     if (image)
         nsvgDelete(image);
 }
 
 
-SDL_Surface* BL::create_shadow(SDL_Surface *in, const std::vector<BoxShadow> &box_shadows, int s_offset)
+SDL_Surface* Foyer::create_shadow(SDL_Surface *in, const std::vector<BoxShadow> &box_shadows, int s_offset)
 {
     float max_radius = 0.0f;
     std::for_each(box_shadows.begin(), 
@@ -210,7 +210,7 @@ SDL_Surface* BL::create_shadow(SDL_Surface *in, const std::vector<BoxShadow> &bo
         SDL_DestroySurface(tmp);
     }
 
-    BL::free_surface(alpha_mask);
+    Foyer::free_surface(alpha_mask);
 
     SDL_SetSurfaceColorMod(in, mod.r, mod.g, mod.b);
     SDL_SetSurfaceAlphaMod(in, mod.a);

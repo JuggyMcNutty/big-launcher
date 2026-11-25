@@ -3,7 +3,7 @@
 #include "../render/image.hpp"
 #include "../render/logger.hpp"
 
-void BL::TextSprite::render(Renderer &r, Font &font, const std::string &text, int max_width)
+void Foyer::TextSprite::render(Renderer &r, Font &font, const std::string &text, int max_width)
 {
     if (max_width <= 0)
         max_width = 100000;
@@ -11,10 +11,10 @@ void BL::TextSprite::render(Renderer &r, Font &font, const std::string &text, in
     if (!surface)
         return;
     tex_ = r.create_texture(*surface);
-    BL::free_surface(surface);
+    Foyer::free_surface(surface);
 }
 
-void BL::TextSprite::draw(Renderer &r, float x, float y, const SDL_Color &color)
+void Foyer::TextSprite::draw(Renderer &r, float x, float y, const SDL_Color &color)
 {
     if (!tex_)
         return;

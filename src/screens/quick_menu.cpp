@@ -6,13 +6,13 @@
 #include <cstdlib>
 #include <signal.h>
 
-BL::QuickMenu::QuickMenu(App &app): ListScreen(app)
+Foyer::QuickMenu::QuickMenu(App &app): ListScreen(app)
 {
     set_title("Quick Menu");
     set_footer("A: select  B: dismiss");
 }
 
-void BL::QuickMenu::on_show()
+void Foyer::QuickMenu::on_show()
 {
     clear_items();
     add_item("Back to home");
@@ -24,7 +24,7 @@ void BL::QuickMenu::on_show()
     add_item("Sleep");
 }
 
-void BL::QuickMenu::on_select(int index)
+void Foyer::QuickMenu::on_select(int index)
 {
     switch (index) {
         case act_home: {
@@ -34,7 +34,7 @@ void BL::QuickMenu::on_select(int index)
                 int p = std::atoi(pid);
                 if (p > 0) {
                     kill(p, SIGTERM);
-                    BL::logger::info("Quick menu: killed app pid {}", p);
+                    Foyer::logger::info("Quick menu: killed app pid {}", p);
                 }
             }
             app_.restart_ui(); // exit the overlay

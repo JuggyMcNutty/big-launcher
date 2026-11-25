@@ -2,11 +2,11 @@
 #include "process.hpp"
 #include "../render/logger.hpp"
 
-namespace BL::power {
+namespace Foyer::power {
     // Fire-and-forget: these spawn a helper that acts on the whole system.
     static bool run(const std::string &cmd)
     {
-        BL::logger::debug("Power: {}", cmd);
+        Foyer::logger::debug("Power: {}", cmd);
         auto p = Process::spawn(cmd);
         (void) p;  // intentionally not waited on
         return p.alive() || true;

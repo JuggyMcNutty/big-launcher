@@ -20,14 +20,14 @@
 #include "../platform/process.hpp"
 #include "../input/action.hpp"
 
-#ifdef BL_EVDEV
+#ifdef FOYER_EVDEV
 #include "../input/evdev_global.hpp"
 #endif
-#ifdef BL_CEC
+#ifdef FOYER_CEC
 #include "../input/cec.hpp"
 #endif
 
-namespace BL {
+namespace Foyer {
     // Initialize logging (file + console). Returns the default logger.
     std::shared_ptr<spdlog::logger> init_logging_global();
 
@@ -135,10 +135,10 @@ namespace BL {
         Uint64 toast_until_ = 0;
 
         // Global input
-#ifdef BL_EVDEV
+#ifdef FOYER_EVDEV
         std::unique_ptr<EvdevGlobal> evdev_;
 #endif
-#ifdef BL_CEC
+#ifdef FOYER_CEC
         std::unique_ptr<Cec> cec_;
 #endif
 

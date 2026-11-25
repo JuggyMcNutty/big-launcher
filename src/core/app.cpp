@@ -25,13 +25,13 @@
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
-namespace BL {
-    static const char *EXECUTABLE_TITLE = "big-launcher";
+namespace Foyer {
+    static const char *EXECUTABLE_TITLE = "foyer";
 
     std::shared_ptr<spdlog::logger> init_logging_global()
     {
         char *home_dir = getenv("HOME");
-        std::filesystem::path log_path = join_paths(home_dir ? home_dir : "/tmp", ".local", "share", EXECUTABLE_TITLE, "big-launcher.log");
+        std::filesystem::path log_path = join_paths(home_dir ? home_dir : "/tmp", ".local", "share", EXECUTABLE_TITLE, "foyer.log");
         std::error_code ec;
         std::filesystem::create_directories(log_path.parent_path(), ec);
         auto file_sink = std::make_shared<spdlog::sinks::basic_lazy_file_sink_st>(log_path.string(), true);
@@ -41,7 +41,7 @@ namespace BL {
         console_sink->set_level(spdlog::level::warn);
         console_sink->set_pattern("[%^%l%$] %v");
         sinks.push_back(console_sink);
-        auto logger = std::make_shared<spdlog::logger>("big-launcher", sinks.begin(), sinks.end());
+        auto logger = std::make_shared<spdlog::logger>("foyer", sinks.begin(), sinks.end());
         logger->set_level(spdlog::level::info);
         // spdlog's default flush level is off — the file sink would otherwise
         // keep messages in its buffer until it fills, leaving the log empty.
@@ -51,7 +51,7 @@ namespace BL {
     }
 }
 
-namespace BL {
+namespace Foyer {
     // init-spawned sessions get a minimal PATH without /usr/local/bin, where
     // the htpc-* wrappers, htpc-ctl and locally built apps live. Without it
     // every launch exits 127 and every htpc-ctl job fails.
@@ -70,7 +70,7 @@ namespace BL {
     }
 }
 
-BL::App::App(std::string config_path, std::string layout_path, bool overlay)
+Foyer::App::App(std::string config_path, std::string layout_path, bool overlay)
     : overlay_(overlay)
 {
     ensure_path();
@@ -103,7 +103,7 @@ BL::App::App(std::string config_path, std::string layout_path, bool overlay)
             SDL_AddGamepadMappingsFromFile(config_.gamepad_mappings_file.c_str());
     }
 
-#ifdef BL_EVDEV
+#ifdef FOYER_EVDEV
     evdev_ = std::make_unique<EvdevGlobal>();
     if (!overlay_) {
         // The overlay is a separate process; it handles its own input via SDL.
@@ -118,16 +118,16 @@ BL::App::App(std::string config_path, std::string layout_path, bool overlay)
         evdev_->start();
     }
 #endif
-#ifdef BL_CEC
+#ifdef FOYER_CEC
     cec_ = std::make_unique<Cec>();
 #endif
 
     if (!overlay_)
         build_home();
-    BL::logger::info("App initialized ({}x{}) {}", screen_w_, screen_h_, overlay_ ? "[overlay]" : "");
+    Foyer::logger::info("App initialized ({}x{}) {}", screen_w_, screen_h_, overlay_ ? "[overlay]" : "");
 }
 
-BL::App::~App()
+Foyer::App::~App()
 {
     if (jobs_) jobs_->stop();
     // Destroy sound before SDL_Quit (it owns an audio stream).
@@ -137,22 +137,22 @@ BL::App::~App()
     SDL_Quit();
 }
 
-void BL::App::init_display()
+void Foyer::App::init_display()
 {
     SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
     if (!SDL_Init(SDL_INIT_VIDEO))
-        BL::logger::critical("Could not initialize SDL (SDL Error: {})", SDL_GetError());
+        Foyer::logger::critical("Could not initialize SDL (SDL Error: {})", SDL_GetError());
 
     int display_count;
     SDL_DisplayID *displays = SDL_GetDisplays(&display_count);
     if (!display_count)
-        BL::logger::critical("Could not find any valid display");
+        Foyer::logger::critical("Could not find any valid display");
     SDL_DisplayID display_id = displays[0];
     SDL_free(displays);
 
     dm_ = SDL_GetDesktopDisplayMode(display_id);
     if (!dm_)
-        BL::logger::critical("Could not get desktop display mode (SDL Error: {})", SDL_GetError());
+        Foyer::logger::critical("Could not get desktop display mode (SDL Error: {})", SDL_GetError());
     screen_w_ = dm_->w;
     screen_h_ = dm_->h;
 
@@ -167,18 +167,18 @@ void BL::App::init_display()
     }
 
     if (!TTF_Init())
-        BL::logger::critical("Could not initialize SDL_ttf (SDL Error: {})", SDL_GetError());
+        Foyer::logger::critical("Could not initialize SDL_ttf (SDL Error: {})", SDL_GetError());
 }
 
-void BL::App::create_window()
+void Foyer::App::create_window()
 {
-    window_ = SDL_CreateWindow("big-launcher", dm_->w, dm_->h, SDL_WINDOW_FULLSCREEN);
+    window_ = SDL_CreateWindow("Foyer", dm_->w, dm_->h, SDL_WINDOW_FULLSCREEN);
     if (!window_)
-        BL::logger::critical("Could not create window (SDL Error: {})", SDL_GetError());
+        Foyer::logger::critical("Could not create window (SDL Error: {})", SDL_GetError());
     SDL_HideCursor();
 }
 
-void BL::App::apply_theme()
+void Foyer::App::apply_theme()
 {
     theme_.sidebar_highlight = config_.sidebar_highlight_color;
     theme_.sidebar_text = config_.sidebar_text_color;
@@ -186,44 +186,44 @@ void BL::App::apply_theme()
     theme_.menu_highlight = config_.menu_highlight_color;
 }
 
-void BL::App::build_home()
+void Foyer::App::build_home()
 {
     screens_.replace(std::make_unique<HomeScreen>(*this));
 }
 
-void BL::App::play_click()
+void Foyer::App::play_click()
 {
     if (sound_) sound_->play_click();
 }
 
-void BL::App::play_select()
+void Foyer::App::play_select()
 {
     if (sound_) sound_->play_select();
 }
 
-void BL::App::show_toast(const std::string &msg)
+void Foyer::App::show_toast(const std::string &msg)
 {
     toast_msg_ = msg;
     toast_until_ = SDL_GetTicks() + 4000;
     mark_dirty();
 }
 
-void BL::App::restart_ui()
+void Foyer::App::restart_ui()
 {
     // :quit — exit; the session script respawns the launcher
-    BL::logger::info("Restart UI requested");
+    Foyer::logger::info("Restart UI requested");
     quit_ = true;
 }
 
-void BL::App::close_app()
+void Foyer::App::close_app()
 {
     if (app_proc_.alive()) {
-        BL::logger::info("Closing app (pid {})", app_proc_.pid());
+        Foyer::logger::info("Closing app (pid {})", app_proc_.pid());
         app_proc_.kill();
     }
 }
 
-namespace BL {
+namespace Foyer {
     static std::string slugify(const std::string &s)
     {
         std::string out;
@@ -267,12 +267,12 @@ namespace BL {
     }
 }
 
-void BL::App::report_app_exit(int code)
+void Foyer::App::report_app_exit(int code)
 {
     Uint64 ran = SDL_GetTicks() - app_started_;
     std::string name = app_title_.empty() ? app_command_ : app_title_;
     std::string tail = last_log_line(app_log_);
-    BL::logger::info("App '{}' exited with status {} after {} ms (log: {})", name, code, ran, app_log_);
+    Foyer::logger::info("App '{}' exited with status {} after {} ms (log: {})", name, code, ran, app_log_);
     if (code == 0 && ran >= 3000)
         return;  // normal quit
     if (code == 0)
@@ -286,13 +286,13 @@ void BL::App::report_app_exit(int code)
         msg = name + " exited with error " + std::to_string(code);
     if (!tail.empty())
         msg += ": " + tail;
-    BL::logger::warn("{}", msg);
+    Foyer::logger::warn("{}", msg);
     show_toast(msg);
 }
 
-void BL::App::execute_command(const std::string &command, const std::string &title)
+void Foyer::App::execute_command(const std::string &command, const std::string &title)
 {
-    BL::logger::debug("Executing command '{}'", command);
+    Foyer::logger::debug("Executing command '{}'", command);
     if (command.starts_with(":")) {
         if (command == ":quit") restart_ui();
         else if (command == ":restart") power::reboot();
@@ -315,7 +315,7 @@ void BL::App::execute_command(const std::string &command, const std::string &tit
         else if (command == ":mute") jobs_->run(ctl("audio", "mute/toggle"), [this](const JobResult&){ mark_dirty(); });
         else {
             // Unknown special command: ignore
-            BL::logger::warn("Unknown special command '{}'", command);
+            Foyer::logger::warn("Unknown special command '{}'", command);
         }
         return;
     }
@@ -327,28 +327,28 @@ void BL::App::execute_command(const std::string &command, const std::string &tit
     app_started_ = SDL_GetTicks();
     app_proc_ = Process::spawn(command, app_log_);
     if (app_proc_.alive()) {
-        BL::logger::info("Launched '{}' (pid {}, log {})", title.empty() ? command : title, app_proc_.pid(), app_log_);
+        Foyer::logger::info("Launched '{}' (pid {}, log {})", title.empty() ? command : title, app_proc_.pid(), app_log_);
         mark_dirty();
     } else {
-        BL::logger::error("Failed to launch '{}'", command);
+        Foyer::logger::error("Failed to launch '{}'", command);
         show_toast("Failed to launch app");
     }
 }
 
-void BL::App::open_quick_menu()
+void Foyer::App::open_quick_menu()
 {
     // Launch the overlay as a separate process; gamescope composites it on
     // top of the running app because GAMESCOPE_EXTERNAL_OVERLAY is set.
     if (overlay_proc_.alive()) return; // already showing
-    std::string exe = std::string(BL::executable_dir()) + "/big-launcher";
+    std::string exe = std::string(Foyer::executable_dir()) + "/foyer";
     std::string cmd = "GAMESCOPE_EXTERNAL_OVERLAY=1 HTPC_APP_PID=" +
                       std::to_string(app_proc_.pid()) + " " + exe +
                       " --overlay -c " + config_path_;
-    BL::logger::info("Opening quick menu overlay (app pid {})", app_proc_.pid());
+    Foyer::logger::info("Opening quick menu overlay (app pid {})", app_proc_.pid());
     overlay_proc_ = Process::spawn(cmd);
 }
 
-void BL::App::on_global_action(Action action)
+void Foyer::App::on_global_action(Action action)
 {
     // Global input while an app is focused (from evdev/CEC)
     switch (action) {
@@ -370,7 +370,7 @@ void BL::App::on_global_action(Action action)
     }
 }
 
-void BL::App::handle_key(SDL_Event &event)
+void Foyer::App::handle_key(SDL_Event &event)
 {
     if (event.key.repeat && event.key.key != SDLK_BACKSPACE) {
         // Allow repeat only for navigation
@@ -395,7 +395,7 @@ void BL::App::handle_key(SDL_Event &event)
     }
 }
 
-void BL::App::handle_gamepad(SDL_Event &event)
+void Foyer::App::handle_gamepad(SDL_Event &event)
 {
     last_input_ = SDL_GetTicks();
     wake_screensaver();
@@ -409,7 +409,7 @@ void BL::App::handle_gamepad(SDL_Event &event)
     }
 }
 
-void BL::App::wake_screensaver()
+void Foyer::App::wake_screensaver()
 {
     if (screensaver_active_) {
         screensaver_active_ = false;
@@ -417,7 +417,7 @@ void BL::App::wake_screensaver()
     }
 }
 
-void BL::App::dispatch_action(Action action)
+void Foyer::App::dispatch_action(Action action)
 {
     wake_screensaver();
     // Home/Menu are global
@@ -442,7 +442,7 @@ void BL::App::dispatch_action(Action action)
     }
 }
 
-void BL::App::handle_event(SDL_Event &event)
+void Foyer::App::handle_event(SDL_Event &event)
 {
     if (jobs_->handle_event(event))
         return;
@@ -471,10 +471,10 @@ void BL::App::handle_event(SDL_Event &event)
             break;
         }
         case SDL_EVENT_GAMEPAD_ADDED:
-            BL::logger::debug("Gamepad added: {}", SDL_GetGamepadNameForID(event.gdevice.which));
+            Foyer::logger::debug("Gamepad added: {}", SDL_GetGamepadNameForID(event.gdevice.which));
             break;
         case SDL_EVENT_GAMEPAD_REMOVED:
-            BL::logger::debug("Gamepad removed");
+            Foyer::logger::debug("Gamepad removed");
             break;
         case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
         case SDL_EVENT_GAMEPAD_AXIS_MOTION:
@@ -491,7 +491,7 @@ void BL::App::handle_event(SDL_Event &event)
     }
 }
 
-void BL::App::update_app_state()
+void Foyer::App::update_app_state()
 {
     if (app_proc_.alive()) {
         if (app_proc_.poll()) {
@@ -511,7 +511,7 @@ void BL::App::update_app_state()
         overlay_proc_ = Process();
 }
 
-void BL::App::refresh_status()
+void Foyer::App::refresh_status()
 {
     last_status_refresh_ = SDL_GetTicks();
     jobs_->run(ctl("net", "status"), [this](const JobResult &res) {
@@ -540,13 +540,13 @@ void BL::App::refresh_status()
     });
 }
 
-void BL::App::schedule_status_refresh()
+void Foyer::App::schedule_status_refresh()
 {
     if (SDL_GetTicks() - last_status_refresh_ >= 5000)
         refresh_status();
 }
 
-void BL::App::draw()
+void Foyer::App::draw()
 {
     auto &r = *renderer_;
     r.clear();
@@ -588,9 +588,9 @@ void BL::App::draw()
     r.present();
 }
 
-int BL::App::run()
+int Foyer::App::run()
 {
-    BL::logger::info("Begin main loop");
+    Foyer::logger::info("Begin main loop");
     refresh_status();
     while (!quit_) {
         SDL_Event event;

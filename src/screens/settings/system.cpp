@@ -1,9 +1,10 @@
 #include "system.hpp"
+#include <lconfig.h>
 #include "../../core/app.hpp"
 #include "../../platform/sysctl.hpp"
 #include "../../render/util.hpp"
 
-BL::SystemSettings::SystemSettings(App &app): ListScreen(app)
+Foyer::SystemSettings::SystemSettings(App &app): ListScreen(app)
 {
     set_title("System");
     set_footer("A: select  B: back");
@@ -15,15 +16,15 @@ BL::SystemSettings::SystemSettings(App &app): ListScreen(app)
     add_item("Memory", "--");
     add_item("CPU Temp", "--");
     add_item("Uptime", "--");
-    add_item("About", "big-launcher v2");
+    add_item("About", "Foyer " PROJECT_VERSION);
 }
 
-void BL::SystemSettings::on_show()
+void Foyer::SystemSettings::on_show()
 {
     refresh_info();
 }
 
-void BL::SystemSettings::refresh_info()
+void Foyer::SystemSettings::refresh_info()
 {
     app_.jobs().run(ctl("sys", "info"), [this](const JobResult &res) {
         if (!res.ok) return;
@@ -43,7 +44,7 @@ void BL::SystemSettings::refresh_info()
     });
 }
 
-void BL::SystemSettings::on_select(int index)
+void Foyer::SystemSettings::on_select(int index)
 {
     switch (index) {
         case item_hostname:

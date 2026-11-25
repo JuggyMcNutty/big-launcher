@@ -33,10 +33,10 @@ set(SOURCES
   render/theme.cpp
 )
 
-if (BL_EVDEV AND LIBEVDEV_FOUND)
+if (FOYER_EVDEV AND LIBEVDEV_FOUND)
   list(APPEND SOURCES input/evdev_global.cpp)
 endif ()
-if (BL_CEC)
+if (FOYER_CEC)
   list(APPEND SOURCES input/cec.cpp)
 endif ()
 
@@ -54,9 +54,9 @@ target_link_libraries(${EXECUTABLE_TITLE}
   PkgConfig::SPDLOG
   inih
 )
-if (BL_EVDEV AND LIBEVDEV_FOUND)
+if (FOYER_EVDEV AND LIBEVDEV_FOUND)
   target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBEVDEV)
 endif ()
-if (BL_CEC)
+if (FOYER_CEC)
   target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBCEC)
 endif ()

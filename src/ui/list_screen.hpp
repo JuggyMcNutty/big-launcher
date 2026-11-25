@@ -5,7 +5,7 @@
 
 #include "screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class Renderer;
     class Theme;
 

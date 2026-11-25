@@ -1,7 +1,7 @@
 #include "launcher.hpp"
 #include "../../core/app.hpp"
 
-BL::LauncherSettings::LauncherSettings(App &app): ListScreen(app)
+Foyer::LauncherSettings::LauncherSettings(App &app): ListScreen(app)
 {
     set_title("Launcher Preferences");
     set_footer("A: toggle  B: back");
@@ -11,13 +11,13 @@ BL::LauncherSettings::LauncherSettings(App &app): ListScreen(app)
     add_item("Sounds", app_.config().sound_enabled ? "on" : "off");
 }
 
-void BL::LauncherSettings::on_hide()
+void Foyer::LauncherSettings::on_hide()
 {
     // Persist changes
     app_.save_config();
 }
 
-void BL::LauncherSettings::on_select(int index)
+void Foyer::LauncherSettings::on_select(int index)
 {
     switch (index) {
         case item_screensaver:

@@ -8,7 +8,7 @@
 #include "text_sprite.hpp"
 #include "../render/renderer.hpp"
 
-namespace BL {
+namespace Foyer {
     // On-screen keyboard: a modal screen the user types into with the D-pad.
     // Pushed on the screen stack so it grabs all input. On submit (Done key)
     // calls on_submit(text) and pops itself. Back deletes; the final Back

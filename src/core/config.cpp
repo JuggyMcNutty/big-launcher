@@ -8,7 +8,7 @@
 #include "../render/util.hpp"
 #include "../render/logger.hpp"
 
-namespace BL {
+namespace Foyer {
     static std::string trim(const std::string &s)
     {
         size_t b = s.find_first_not_of(" \t\r\n");
@@ -53,13 +53,13 @@ namespace BL {
 
 }
 
-void BL::Config::parse(const std::string &file)
+void Foyer::Config::parse(const std::string &file)
 {
     this->path = file;
-    BL::logger::debug("Parsing config file '{}'", file);
+    Foyer::logger::debug("Parsing config file '{}'", file);
     std::ifstream in(file);
     if (!in)
-        BL::logger::critical("Could not open config file '{}'", file);
+        Foyer::logger::critical("Could not open config file '{}'", file);
 
     lines.clear();
     std::string section;
@@ -85,10 +85,10 @@ void BL::Config::parse(const std::string &file)
         lines.push_back({section, key, value, true, line});
     }
     load_typed();
-    BL::logger::debug("Successfully parsed config file");
+    Foyer::logger::debug("Successfully parsed config file");
 }
 
-void BL::Config::load_typed()
+void Foyer::Config::load_typed()
 {
     for (const Line &l : lines) {
         if (l.kv)
@@ -96,7 +96,7 @@ void BL::Config::load_typed()
     }
 }
 
-void BL::Config::typed_set(const std::string &section, const std::string &key, const std::string &value)
+void Foyer::Config::typed_set(const std::string &section, const std::string &key, const std::string &value)
 {
     auto bool_of = [](const std::string &v){ return v == "true" || v == "True" || v == "1"; };
     auto int_of = [](const std::string &v, int def)->int{
@@ -159,7 +159,7 @@ void BL::Config::typed_set(const std::string &section, const std::string &key, c
     }
 }
 
-std::optional<std::string> BL::Config::typed_value(const std::string &section, const std::string &key) const
+std::optional<std::string> Foyer::Config::typed_value(const std::string &section, const std::string &key) const
 {
     auto bool_str = [](bool b){ return b ? "true" : "false"; };
     if (section == "Settings") {
@@ -196,7 +196,7 @@ std::optional<std::string> BL::Config::typed_value(const std::string &section, c
     return std::nullopt;
 }
 
-void BL::Config::set(const std::string &section, const std::string &key, const std::string &value)
+void Foyer::Config::set(const std::string &section, const std::string &key, const std::string &value)
 {
     // Update or append the raw line
     for (Line &l : lines) {
@@ -222,7 +222,7 @@ void BL::Config::set(const std::string &section, const std::string &key, const s
     typed_set(section, key, value);
 }
 
-std::optional<std::string> BL::Config::get(const std::string &section, const std::string &key) const
+std::optional<std::string> Foyer::Config::get(const std::string &section, const std::string &key) const
 {
     for (const Line &l : lines)
         if (l.kv && l.section == section && l.key == key)
@@ -230,7 +230,7 @@ std::optional<std::string> BL::Config::get(const std::string &section, const std
     return std::nullopt;
 }
 
-void BL::Config::write(const std::string &file) const
+void Foyer::Config::write(const std::string &file) const
 {
     // Work on a copy of the lines
     std::vector<Line> out = lines;
@@ -314,7 +314,7 @@ void BL::Config::write(const std::string &file) const
     }
     std::filesystem::rename(tmp, target, ec);
     if (ec)
-        BL::logger::error("Failed to write config '{}': {}", file, ec.message());
+        Foyer::logger::error("Failed to write config '{}': {}", file, ec.message());
     else
-        BL::logger::debug("Wrote config file '{}'", file);
+        Foyer::logger::debug("Wrote config file '{}'", file);
 }

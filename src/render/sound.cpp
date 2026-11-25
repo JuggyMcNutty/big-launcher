@@ -9,22 +9,22 @@
 #include "sound.hpp"
 #include "util.hpp"
 
-namespace BL {
+namespace Foyer {
     constexpr double RANGE_DB = 40.0;
     constexpr int MAX_VOLUME = 10;
 }
 
-BL::SoundFile::SoundFile(const std::string &path, int volume)
+Foyer::SoundFile::SoundFile(const std::string &path, int volume)
 {
     SDL_AudioSpec spec;
     SDL_LoadWAV(path.c_str(), &spec, &buffer, &len);
     if (spec.format != SDL_AUDIO_S16LE || spec.channels != 1 || spec.freq != 48000)
-        BL::logger::error_throw("Audio file {} has invalid format", path);
+        Foyer::logger::error_throw("Audio file {} has invalid format", path);
 
     // set volume
-    if (volume <= 0 || volume >= BL::MAX_VOLUME)
+    if (volume <= 0 || volume >= Foyer::MAX_VOLUME)
         return;
-    float scale_factor = static_cast<float>(std::pow(10.0, (static_cast<double>(volume - BL::MAX_VOLUME) * (BL::RANGE_DB / static_cast<double>(BL::MAX_VOLUME))) / 20.0));
+    float scale_factor = static_cast<float>(std::pow(10.0, (static_cast<double>(volume - Foyer::MAX_VOLUME) * (Foyer::RANGE_DB / static_cast<double>(Foyer::MAX_VOLUME))) / 20.0));
     Sint16 *data = reinterpret_cast<Sint16*>(buffer);
     size_t nb_samples = len / sizeof(Sint16);
     for (size_t i = 0; i < nb_samples; i++) {
@@ -35,52 +35,52 @@ BL::SoundFile::SoundFile(const std::string &path, int volume)
     }
 }
 
-BL::SoundFile::~SoundFile()
+Foyer::SoundFile::~SoundFile()
 {
     SDL_free(buffer);
 }
 
-BL::Sound::Sound(int volume)
+Foyer::Sound::Sound(int volume)
 {
     if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        BL::logger::error_throw("Failed to initialize audio");
+        Foyer::logger::error_throw("Failed to initialize audio");
     }
-    BL::logger::debug("Successfully initialized audio");
+    Foyer::logger::debug("Successfully initialized audio");
 
-    std::string click_path = BL::find_file<BL::FileType::AUDIO>(CLICK_FILENAME);
+    std::string click_path = Foyer::find_file<Foyer::FileType::AUDIO>(CLICK_FILENAME);
     if (click_path.empty())
-        BL::logger::error_throw("Could not locate audio file '{}'", CLICK_FILENAME);
-    std::string select_path = BL::find_file<BL::FileType::AUDIO>(SELECT_FILENAME);
+        Foyer::logger::error_throw("Could not locate audio file '{}'", CLICK_FILENAME);
+    std::string select_path = Foyer::find_file<Foyer::FileType::AUDIO>(SELECT_FILENAME);
     if (select_path.empty())
-        BL::logger::error_throw("Could not locate audio file '{}'", SELECT_FILENAME);
-    click = new BL::SoundFile(click_path, volume);
-    select = new BL::SoundFile(select_path, volume);
+        Foyer::logger::error_throw("Could not locate audio file '{}'", SELECT_FILENAME);
+    click = new Foyer::SoundFile(click_path, volume);
+    select = new Foyer::SoundFile(select_path, volume);
 
     connect();
 }
 
-BL::Sound::~Sound()
+Foyer::Sound::~Sound()
 {
     disconnect();
     delete click;
     delete select;
 }
 
-bool BL::Sound::connect()
+bool Foyer::Sound::connect()
 {
-    BL::logger::debug("Opening audio device...");
+    Foyer::logger::debug("Opening audio device...");
     SDL_AudioSpec spec = { SDL_AUDIO_S16LE, 1, 48000 };
-    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &BL::Sound::callback, this);
+    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &Foyer::Sound::callback, this);
     if (!stream || !SDL_ResumeAudioStreamDevice(stream)) {
-        BL::logger::error("Failed to open audio device (SDL Error: {})", SDL_GetError());
+        Foyer::logger::error("Failed to open audio device (SDL Error: {})", SDL_GetError());
         return false;
     }
     SDL_ResumeAudioStreamDevice(stream);
-    BL::logger::debug("Successfully opened audio device");
+    Foyer::logger::debug("Successfully opened audio device");
     return true;
 }
 
-void BL::Sound::disconnect()
+void Foyer::Sound::disconnect()
 {
     if (stream){
         SDL_DestroyAudioStream(stream);
@@ -88,12 +88,12 @@ void BL::Sound::disconnect()
     }
 }
 
-void BL::Sound::callback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount)
+void Foyer::Sound::callback(void *userdata, SDL_AudioStream * /*stream*/, int additional_amount, int /*total_amount*/)
 {
-    reinterpret_cast<BL::Sound*>(userdata)->put_data(additional_amount);
+    reinterpret_cast<Foyer::Sound*>(userdata)->put_data(additional_amount);
 }
 
-void BL::Sound::put_data(int amount)
+void Foyer::Sound::put_data(int amount)
 {
     std::unique_lock lock(mutex);
     if (!current_file)
@@ -105,7 +105,7 @@ void BL::Sound::put_data(int amount)
         current_file = nullptr;
 }
 
-void BL::Sound::set_current_file(BL::SoundFile &file)
+void Foyer::Sound::set_current_file(Foyer::SoundFile &file)
 {
     if (!stream)
         return;
@@ -114,12 +114,12 @@ void BL::Sound::set_current_file(BL::SoundFile &file)
     current_file->reset_pos();
 }
 
-void BL::Sound::play_click()
+void Foyer::Sound::play_click()
 {
     set_current_file(*click);
 }
 
-void BL::Sound::play_select()
+void Foyer::Sound::play_select()
 {
     set_current_file(*select);
 }

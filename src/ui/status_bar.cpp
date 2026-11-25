@@ -1,7 +1,7 @@
 #include "status_bar.hpp"
 #include "../render/theme.hpp"
 
-namespace BL {
+namespace Foyer {
     void StatusBar::draw(Renderer &r, Theme &t, float w, float h)
     {
         if (net_dirty_ || !net_sprite_.valid()) {

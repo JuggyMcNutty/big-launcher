@@ -2,7 +2,7 @@
 #include "../../core/app.hpp"
 #include "../../platform/power.hpp"
 
-BL::PowerSettings::PowerSettings(App &app): ListScreen(app)
+Foyer::PowerSettings::PowerSettings(App &app): ListScreen(app)
 {
     set_title("Power");
     set_footer("A: select  B: back");
@@ -13,7 +13,7 @@ BL::PowerSettings::PowerSettings(App &app): ListScreen(app)
     add_item("Restart UI");
 }
 
-void BL::PowerSettings::on_select(int index)
+void Foyer::PowerSettings::on_select(int index)
 {
     switch (index) {
         case item_reboot:

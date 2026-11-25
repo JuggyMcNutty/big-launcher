@@ -4,7 +4,7 @@
 
 #include <SDL3/SDL.h>
 
-namespace BL {
+namespace Foyer {
     class Texture {
     protected:
         SDL_FRect pos{};

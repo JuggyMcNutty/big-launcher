@@ -6,7 +6,7 @@
 
 #include <SDL3/SDL.h>
 
-namespace BL {
+namespace Foyer {
     // Generic tween engine. Replaces the old Shift/Press queues. Each animation
     // drives a float from start to end over a duration with optional easing and
     // a per-frame callback.

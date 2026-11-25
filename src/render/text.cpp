@@ -3,17 +3,17 @@
 #include "text.hpp"
 #include "util.hpp"
 
-BL::Font::Font(const std::string &file, int height)
+Foyer::Font::Font(const std::string &file, int height)
 {
-    std::string font_path = BL::find_file<BL::FileType::FONT>(file.c_str());
+    std::string font_path = Foyer::find_file<Foyer::FileType::FONT>(file.c_str());
     if (font_path.empty())
-        BL::logger::critical("Could not locate font '{}'", file);
+        Foyer::logger::critical("Could not locate font '{}'", file);
     font = TTF_OpenFont(font_path.c_str(), static_cast<float>(height));
     if (!font)
-        BL::logger::critical("Could not open font\nSDL Error: {}\n", SDL_GetError());
+        Foyer::logger::critical("Could not open font\nSDL Error: {}\n", SDL_GetError());
 }
 
-SDL_Surface* BL::Font::render_text(const std::string &text, SDL_Rect *src_rect, SDL_Rect *dst_rect, int max_width)
+SDL_Surface* Foyer::Font::render_text(const std::string &text, SDL_Rect *src_rect, SDL_Rect *dst_rect, int max_width)
 {
     if (text.empty()) {
         // SDL_ttf cannot render an empty string (returns NULL). Give callers
@@ -32,7 +32,7 @@ SDL_Surface* BL::Font::render_text(const std::string &text, SDL_Rect *src_rect, 
 
     surface = TTF_RenderText_Blended(font, out_text.c_str(), out_text.size(), color);
     if (!surface) {
-        BL::logger::error("Could not render text '{}'", text);
+        Foyer::logger::error("Could not render text '{}'", text);
         return surface;
     } 
     

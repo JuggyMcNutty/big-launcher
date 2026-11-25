@@ -8,7 +8,7 @@
 
 #include "text.hpp"
 
-namespace BL {
+namespace Foyer {
     // Central visual configuration: colors + fonts. Geometry is computed by
     // screens from the screen size and these values.
     class Theme {

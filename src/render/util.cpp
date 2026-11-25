@@ -9,7 +9,7 @@
 #include "logger.hpp"
 #include "util.hpp"
 
-namespace BL {
+namespace Foyer {
     static const char *executable_dir_path = nullptr;
 
     void set_executable_dir(const char *dir)
@@ -35,7 +35,7 @@ namespace BL {
 }
 
 // Calculates the length of a utf-8 encoded C-style string
-int BL::utf8_length(std::string_view string)
+int Foyer::utf8_length(std::string_view string)
 {
     int length = 0;
     auto it = string.cbegin();
@@ -55,7 +55,7 @@ int BL::utf8_length(std::string_view string)
 }
 
 // A function to extract the Unicode code point from the first character in a UTF-8 encoded C-style string
-Uint16 BL::get_unicode_code_point(const char *p, int &bytes)
+Uint16 Foyer::get_unicode_code_point(const char *p, int &bytes)
 {
     Uint16 result;
 
@@ -89,7 +89,7 @@ Uint16 BL::get_unicode_code_point(const char *p, int &bytes)
 }
 
 // A function to truncate a utf-8 encoded string to max number of pixels
-std::string BL::utf8_truncate(const std::string &string, int width, int max_width)
+std::string Foyer::utf8_truncate(const std::string &string, int width, int max_width)
 {
     int string_length = utf8_length(string);
     int avg_width = width / string_length;
@@ -116,7 +116,7 @@ std::string BL::utf8_truncate(const std::string &string, int width, int max_widt
 }
 
 // A function to convert a hex-formatted string into a color struct
-bool BL::hex_to_color(std::string_view string, SDL_Color &color)
+bool Foyer::hex_to_color(std::string_view string, SDL_Color &color)
 {
     auto it = string.cbegin();
     if (*it != '#' || string.size() != 7)
@@ -136,7 +136,7 @@ bool BL::hex_to_color(std::string_view string, SDL_Color &color)
     return true;
 }
 
-std::vector<std::string> BL::split_lines(const std::string &s)
+std::vector<std::string> Foyer::split_lines(const std::string &s)
 {
     std::vector<std::string> out;
     std::string line;
@@ -152,7 +152,7 @@ std::vector<std::string> BL::split_lines(const std::string &s)
     return out;
 }
 
-void BL::join_paths(std::string &out, std::initializer_list<const char*> list)
+void Foyer::join_paths(std::string &out, std::initializer_list<const char*> list)
 {
     std::filesystem::path path;
     for (const char *p : list)
@@ -160,32 +160,32 @@ void BL::join_paths(std::string &out, std::initializer_list<const char*> list)
     out = path.string();
 }
 
-template <BL::FileType file_type>
-std::string BL::find_file(const char *filename)
+template <Foyer::FileType file_type>
+std::string Foyer::find_file(const char *filename)
 {
     static std::vector<std::filesystem::path> paths;
-    if constexpr(file_type == BL::FileType::CONFIG) {
+    if constexpr(file_type == Foyer::FileType::CONFIG) {
         if (!paths.size()) {
             paths.resize(4);
             paths[0] = CURRENT_DIRECTORY;
             paths[1] = safe_exec_dir();
-            paths[2] = BL::join_paths(safe_home(), ".config", EXECUTABLE_TITLE);
+            paths[2] = Foyer::join_paths(safe_home(), ".config", EXECUTABLE_TITLE);
             paths[3] = SYSTEM_SHARE_DIR;
         }
     }
 
-    if constexpr(file_type == BL::FileType::FONT) {
+    if constexpr(file_type == Foyer::FileType::FONT) {
         if (!paths.size()) {
             paths.resize(2);
-            paths[0] = BL::join_paths(safe_exec_dir(), "assets", "fonts");
+            paths[0] = Foyer::join_paths(safe_exec_dir(), "assets", "fonts");
             paths[1] = SYSTEM_FONTS_DIR;
         }
     }
 
-    if constexpr(file_type == BL::FileType::AUDIO) {
+    if constexpr(file_type == Foyer::FileType::AUDIO) {
         if (!paths.size()) {
             paths.resize(2);
-            paths[0] = BL::join_paths(safe_exec_dir(), "assets", "sounds");
+            paths[0] = Foyer::join_paths(safe_exec_dir(), "assets", "sounds");
             paths[1] = SYSTEM_SOUNDS_DIR;
         }
     }
@@ -196,6 +196,6 @@ std::string BL::find_file(const char *filename)
     }
     return std::string();
 }
-template std::string BL::find_file<BL::FileType::CONFIG>(const char *filename);
-template std::string BL::find_file<BL::FileType::FONT>(const char *filename);
-template std::string BL::find_file<BL::FileType::AUDIO>(const char *filename);
+template std::string Foyer::find_file<Foyer::FileType::CONFIG>(const char *filename);
+template std::string Foyer::find_file<Foyer::FileType::FONT>(const char *filename);
+template std::string Foyer::find_file<Foyer::FileType::AUDIO>(const char *filename);

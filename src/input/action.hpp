@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace BL {
+namespace Foyer {
     // Semantic input actions. All input sources (keyboard, gamepad, evdev,
     // CEC) are mapped to these before reaching screens. Text input is handled
     // separately via SDL text events.

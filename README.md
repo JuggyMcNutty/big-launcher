@@ -1,57 +1,44 @@
-# big-launcher
+# Foyer
 
-> **Fork note:** this is the [JuggyMcNutty/big-launcher](https://github.com/JuggyMcNutty/big-launcher) fork for an HTPC build. See **[FORK.md](FORK.md)** for the branch layout and the `v2` couch-frontend rewrite. The rest of this file is the upstream README.
+**Foyer** is a couch-first, big-picture launcher for TVs: a fullscreen, gamepad/remote-friendly front
+door for your living-room PC. It is written in C++23 on SDL3 and runs under
+[gamescope](https://github.com/ValveSoftware/gamescope).
 
-**big-launcher** is a work-in-progress HTPC application launcher. The design is loosely based on the [Roku UI](https://www.techhive.com/wp-content/uploads/2022/01/rokuui-100899030-orig.jpg), consisting of a sidebar menu on the left, and selectable apps on the right. This project is intended to be the successor to my other HTPC project, [Flex Launcher](https://github.com/complexlogic/flex-launcher). Compared to Flex Launcher, big-launcher will be more graphically advanced, but less customizable. The program will be written in C++ and utilize SDL for graphics.
+It is the launcher half of **[foyer-os](https://github.com/JuggyMcNutty/foyer-os)**, a reproducible
+Alpine (musl) / Debian (glibc) appliance image built from per-device profiles.
 
-"big-launcher" is a temporary working title only; prior to release, a proper title will be chosen. If you have a suggestion for what the program title should be, please reach out with via an Issue or Discussion topic. If you have graphic design skills, I could also use help in creating the application logo/icon.
+> Foyer began as a fork of [complexlogic/big-launcher](https://github.com/complexlogic/big-launcher)
+> (dormant since 2025-08) and has since been rewritten. Thanks to complexlogic for the original
+> project. See [FORK.md](FORK.md) for the history.
 
-![Screenshot](https://user-images.githubusercontent.com/95071366/210119196-7925ff34-cec6-4d5f-b580-ef59990e83a2.png)
+## Status
 
-## Current Status
-The program has progressed to the point where it can be used in a working HTPC setup, but it's not ready for release yet. I still need to improve the appearance, stability/error handling, and implement a few more desired features.
-
-Feel free to try it out. The latest Windows development build can be downloaded [here](https://nightly.link/complexlogic/big-launcher/workflows/build/master/Windows%20build.zip). Linux users should [build from source](#building).
-
-There isn't any documentation written yet. There are two configuration files: `layout.xml` and `config.ini`. The `layout.xml` file defines the menus and application images, and `config.ini` controls the general behavior. You can get a general idea of how the configuration works by studying the default files.
-
-### Development Roadmap
-The following must be accomplished before an initial release can be made:
-- [x] Layout parsing
-- [x] Config parsing
-- [x] Logging
-- [x] Graphics rendering
-- [x] Animations
-- [x] Application card generation
-- [x] Command line parsing
-- [x] Automatic file searching
-- [x] Custom backgrounds
-- [x] Application launching
-- [x] Audio
-- [x] Gamepad controls
-- [x] Hotkeys
-- [x] Screensaver
-- [ ] Clock
-- [x] Config/layout file generation
-- [ ] Project name chosen
-- [ ] Project icon designed
-- [x] Windows support
-- [ ] Documentation written
+- **v2.x** (current): a couch frontend with a sidebar and card grid, settings (audio, display,
+  network, Bluetooth, system, power, launcher), on-screen keyboard, status bar, in-UI layout editor,
+  and a quick-menu overlay drawn over running apps (gamescope external overlay).
+- **v3** (in progress on `main`): a Big-Picture-style UI engine. It uses resolution-independent dp
+  layout from 480p to 4K, a spring-animated focus engine, TOML themes/layouts/apps, and drop-in
+  user themes.
 
 ## Building
-You need to have the following dependencies installed:
-- SDL3
-- SDL3_image
-- SDL3_ttf
-- libxml2
-- fmt
-- spdlog
 
-It has a CMake build system and follows the typical build process:
-```bash
-mkdir build && cd build
-cmake ..
-make
+Dependencies: SDL3, SDL3_image, SDL3_ttf, libxml2, fmt and spdlog. libevdev is optional (global
+Home/volume keys).
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build
 ```
 
-The default config references asset files which aren't included in the repo yet because I don't want to permanently bloat the git history with temporary assets from development. You will need to manually download the zip file [here](https://github.com/complexlogic/big-launcher/files/10326572/assets.zip) and extract the contents to your build directory so that the program can find them.
+CMake options: `FOYER_EVDEV` (on), `FOYER_CEC` (off), `FOYER_WERROR` (off).
+
+## Branches & releases
+
+`main` is the only branch. Releases are git tags (`v2.0.0` is the last big-launcher-named build).
+Packages (`.apk` and `.deb`) are attached to foyer-os releases.
+
+## License
+
+Upstream big-launcher was published **without a license**, so no license is granted here yet.
+Relicensing needs complexlogic's permission (or a full rewrite of all remaining upstream code).

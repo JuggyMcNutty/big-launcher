@@ -4,7 +4,7 @@
 
 #include "renderer.hpp"
 
-namespace BL {
+namespace Foyer {
     class TextureSDL: public Texture {
     private:
         std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> texture;

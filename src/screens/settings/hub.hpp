@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class SettingsHub : public ListScreen {
     public:
         explicit SettingsHub(App &app);

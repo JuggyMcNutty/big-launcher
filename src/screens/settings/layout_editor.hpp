@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     // In-UI layout editor. Three levels:
     //  LayoutEditor (menu list) -> LayoutMenuEditor (entry list) ->
     //  LayoutEntryActions (edit title/command, move, delete).

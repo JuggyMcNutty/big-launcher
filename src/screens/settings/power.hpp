@@ -2,7 +2,7 @@
 
 #include "../../ui/list_screen.hpp"
 
-namespace BL {
+namespace Foyer {
     class PowerSettings : public ListScreen {
     public:
         explicit PowerSettings(App &app);

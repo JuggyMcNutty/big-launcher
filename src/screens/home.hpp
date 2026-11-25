@@ -8,7 +8,7 @@
 #include "../ui/text_sprite.hpp"
 #include "../render/renderer.hpp"
 
-namespace BL {
+namespace Foyer {
     // The main launcher screen: a sidebar (menus + commands) on the left and a
     // grid of app cards for the current menu. Navigation: Left/Right switch
     // between sidebar and grid; Up/Down move within; Accept selects.

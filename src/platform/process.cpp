@@ -15,7 +15,7 @@
 #define SYS_pidfd_open 434
 #endif
 
-namespace BL {
+namespace Foyer {
     static int open_pidfd(int pid)
     {
 #ifdef pidfd_open
@@ -27,7 +27,7 @@ namespace BL {
     }
 }
 
-BL::Process::Process(Process &&o) noexcept
+Foyer::Process::Process(Process &&o) noexcept
 {
     pid_ = o.pid_;
     pidfd_ = o.pidfd_;
@@ -38,7 +38,7 @@ BL::Process::Process(Process &&o) noexcept
     o.reaped_ = false;
 }
 
-BL::Process &BL::Process::operator=(Process &&o) noexcept
+Foyer::Process &Foyer::Process::operator=(Process &&o) noexcept
 {
     if (this != &o) {
         release();
@@ -53,12 +53,12 @@ BL::Process &BL::Process::operator=(Process &&o) noexcept
     return *this;
 }
 
-BL::Process::~Process()
+Foyer::Process::~Process()
 {
     release();
 }
 
-void BL::Process::release()
+void Foyer::Process::release()
 {
     if (pidfd_ >= 0)
         close(pidfd_);
@@ -74,7 +74,7 @@ void BL::Process::release()
     pid_ = -1;
 }
 
-BL::Process BL::Process::spawn(const std::string &command, const std::string &log_path)
+Foyer::Process Foyer::Process::spawn(const std::string &command, const std::string &log_path)
 {
     if (!log_path.empty()) {
         std::error_code ec;
@@ -82,7 +82,7 @@ BL::Process BL::Process::spawn(const std::string &command, const std::string &lo
     }
     pid_t pid = fork();
     if (pid < 0) {
-        BL::logger::error("Could not fork new process");
+        Foyer::logger::error("Could not fork new process");
         return Process();
     }
     if (pid == 0) {
@@ -105,11 +105,11 @@ BL::Process BL::Process::spawn(const std::string &command, const std::string &lo
     p.pid_ = pid;
     p.pidfd_ = open_pidfd(pid);
     if (p.pidfd_ < 0)
-        BL::logger::debug("pidfd_open failed for pid {} (errno={}), using waitpid", pid, errno);
+        Foyer::logger::debug("pidfd_open failed for pid {} (errno={}), using waitpid", pid, errno);
     return p;
 }
 
-bool BL::Process::poll()
+bool Foyer::Process::poll()
 {
     if (!alive())
         return false;
@@ -138,7 +138,7 @@ bool BL::Process::poll()
     return false;
 }
 
-int BL::Process::exit_status() const
+int Foyer::Process::exit_status() const
 {
     if (!reaped_) return -1;
     if (WIFEXITED(status_)) return WEXITSTATUS(status_);
@@ -146,20 +146,20 @@ int BL::Process::exit_status() const
     return -1;
 }
 
-void BL::Process::kill(int sig)
+void Foyer::Process::kill(int sig)
 {
     if (alive())
         kill_group(pid_, sig);
 }
 
-void BL::Process::kill_group(int pgid, int sig)
+void Foyer::Process::kill_group(int pgid, int sig)
 {
     if (::kill(-pgid, sig) < 0) {
         if (errno == ESRCH) {
             // Group not found (child may not have called setsid yet); kill the pid directly
             ::kill(pgid, sig);
         } else {
-            BL::logger::debug("kill group {} failed: {}", pgid, strerror(errno));
+            Foyer::logger::debug("kill group {} failed: {}", pgid, strerror(errno));
         }
     }
 }

@@ -17,7 +17,7 @@ extern "C" {
     struct NSVGrasterizer;
 }
 
-namespace BL {
+namespace Foyer {
     // Shadows
     constexpr float SHADOW_ALPHA = 0.45f;
     constexpr float SHADOW_BLUR_SLOPE = 0.0101212f;

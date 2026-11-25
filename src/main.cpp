@@ -9,11 +9,11 @@
 #include "render/logger.hpp"
 #include <lconfig.h>
 
-using namespace BL;
+using namespace Foyer;
 
 static void print_help()
 {
-    fmt::print("Usage: big-launcher [OPTIONS]\n");
+    fmt::print("Usage: foyer [OPTIONS]\n");
     fmt::print("    -c p,  --config=p     Load config file from path p.\n");
     fmt::print("    -l p,  --layout=p     Load layout file from path p.\n");
     fmt::print("    -d,    --debug        Enable debug messages.\n");
@@ -67,8 +67,8 @@ int main(int argc, char *argv[])
         return app.run();
     }
     catch (std::exception &e) {
-        fprintf(stderr, "big-launcher: fatal error: %s\n", e.what());
-        BL::logger::error("Fatal error: {}", e.what());
+        fprintf(stderr, "foyer: fatal error: %s\n", e.what());
+        Foyer::logger::error("Fatal error: {}", e.what());
         return 1;
     }
 }

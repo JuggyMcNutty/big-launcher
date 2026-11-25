@@ -6,7 +6,7 @@
 #include "../../ui/list_screen.hpp"
 #include "../../platform/sysctl.hpp"
 
-namespace BL {
+namespace Foyer {
     // Network page: per-interface details (from `htpc-ctl net status` iface
     // lines), WiFi state, scan + connect.
     class NetworkSettings : public ListScreen {

@@ -6,7 +6,7 @@
 
 #include "action.hpp"
 
-namespace BL {
+namespace Foyer {
 // Non-grabbing evdev reader for global Home/Volume keys while an app is
 // focused. Runs on its own thread; reports actions via callback.
 class EvdevGlobal {

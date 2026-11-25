@@ -10,7 +10,7 @@
 #include <ctime>
 #include <memory>
 
-namespace BL {
+namespace Foyer {
     HomeScreen::HomeScreen(App &app): Screen(app)
     {
         build_sidebar();

@@ -4,23 +4,23 @@
 #include "../../render/util.hpp"
 #include "../../ui/text_input.hpp"
 
-namespace BL {
+namespace Foyer {
     static std::string dash(const std::string &s) { return s.empty() || s == "-" ? "--" : s; }
 }
 
-BL::NetworkSettings::NetworkSettings(App &app): ListScreen(app)
+Foyer::NetworkSettings::NetworkSettings(App &app): ListScreen(app)
 {
     set_title("Network");
     set_footer("A: select  B: back");
     rebuild();
 }
 
-void BL::NetworkSettings::on_show()
+void Foyer::NetworkSettings::on_show()
 {
     refresh_status();
 }
 
-void BL::NetworkSettings::rebuild()
+void Foyer::NetworkSettings::rebuild()
 {
     int prev = selected();
     clear_items();
@@ -62,7 +62,7 @@ void BL::NetworkSettings::rebuild()
     else set_selected(scan_index_);
 }
 
-void BL::NetworkSettings::refresh_status()
+void Foyer::NetworkSettings::refresh_status()
 {
     app_.jobs().run(ctl("net", "status"), [this](const JobResult &res) {
         // Parse whatever output we got even on a non-zero exit (partial info
@@ -79,7 +79,7 @@ void BL::NetworkSettings::refresh_status()
     });
 }
 
-void BL::NetworkSettings::scan()
+void Foyer::NetworkSettings::scan()
 {
     app_.show_toast("Scanning...");
     app_.jobs().run(ctl("wifi", "scan"), [this](const JobResult &res) {
@@ -96,7 +96,7 @@ void BL::NetworkSettings::scan()
     });
 }
 
-void BL::NetworkSettings::on_select(int index)
+void Foyer::NetworkSettings::on_select(int index)
 {
     if (index == scan_index_) {
         scan();

@@ -8,7 +8,7 @@
 #include "power.hpp"
 #include "launcher.hpp"
 
-BL::SettingsHub::SettingsHub(App &app): ListScreen(app)
+Foyer::SettingsHub::SettingsHub(App &app): ListScreen(app)
 {
     set_title("Settings");
     set_footer("D-pad: navigate  A: open  B: back");
@@ -21,7 +21,7 @@ BL::SettingsHub::SettingsHub(App &app): ListScreen(app)
     add_item("Launcher Preferences");
 }
 
-void BL::SettingsHub::on_select(int index)
+void Foyer::SettingsHub::on_select(int index)
 {
     switch (index) {
         case 0: app_.screens().push(std::make_unique<AudioSettings>(app())); break;
