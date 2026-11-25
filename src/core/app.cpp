@@ -269,6 +269,19 @@ void App::build_root()
         return;
     }
     engine_->replace_root(std::make_unique<Shell>(*this));
+    // A resolution change is on trial: ask to keep it (session.sh reverts
+    // automatically if nobody answers).
+    std::error_code ec;
+    if (fs::exists(fs::path(Paths::config_dir()) / "session.conf.pending", ec)) {
+        int w = engine_->metrics().width(), h = engine_->metrics().height();
+        engine_->push(std::make_unique<ConfirmDialog>(*this, "Keep this resolution?",
+            "The display is now " + std::to_string(w) + " \xC3\x97 " + std::to_string(h) + ".",
+            "Keep", "Revert", [this](bool keep) {
+                jobs_->run(ctl("display", keep ? "mode/confirm" : "mode/revert"), nullptr);
+                if (keep) toast("Resolution saved");
+            }, 15));
+        return;
+    }
     if (!opt_.open.empty()) execute(opt_.open);
     else if (!settings_.autostart.empty()) execute(settings_.autostart);
 }
