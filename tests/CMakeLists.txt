@@ -31,3 +31,5 @@ target_link_libraries(foyer_tests
   Threads::Threads
 )
 add_test(NAME foyer_tests COMMAND foyer_tests)
+
+target_compile_options(foyer_tests PRIVATE ${FOYER_WARNINGS})
