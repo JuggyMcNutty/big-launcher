@@ -9,6 +9,14 @@ set(SOURCES
   input/action_mapper.cpp
   ui/list_screen.cpp
   ui/engine/units.cpp
+  ui/engine/node.cpp
+  ui/engine/canvas.cpp
+  ui/engine/text.cpp
+  ui/engine/assets.cpp
+  ui/engine/widgets.cpp
+  ui/engine/focus.cpp
+  ui/engine/scroller.cpp
+  ui/engine/engine.cpp
   ui/anim.cpp
   ui/text_sprite.cpp
   ui/text_input.cpp

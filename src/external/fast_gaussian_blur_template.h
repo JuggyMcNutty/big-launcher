@@ -70,7 +70,7 @@ template<typename T, int C>
 void horizontal_blur_extend(const T * in, T * out, const int w, const int h, const int r)
 {
     float iarr = 1.f / (r+r+1);
-    #pragma omp parallel for
+    // #pragma omp parallel for  (disabled: no OpenMP; avoids -Wunknown-pragmas)
     for(int i=0; i<h; i++) 
     {
         int ti = i*w, li = ti-r-1, ri = ti+r;   // current index, left index, right index
@@ -116,7 +116,7 @@ void horizontal_blur_extend(const T * in, T * out, const int w, const int h, con
 template<typename T, int C>
 void horizontal_blur_kernel_crop(const T * in, T * out, const int w, const int h, const int r)
 {
-    #pragma omp parallel for
+    // #pragma omp parallel for  (disabled: no OpenMP; avoids -Wunknown-pragmas)
     for(int i=0; i<h; i++) 
     {
         int ti = i*w, li = ti-r-1, ri = ti+r;   // current index, left index, right index
@@ -217,7 +217,7 @@ template<typename T, int C>
 void flip_block(const T * in, T * out, const int w, const int h)
 {
     constexpr int block = 256/C;
-    #pragma omp parallel for collapse(2)
+    // #pragma omp parallel for  (disabled: no OpenMP; avoids -Wunknown-pragmas) collapse(2)
     for(int x= 0; x < w; x+= block)
     for(int y= 0; y < h; y+= block)
     {
@@ -275,7 +275,7 @@ void flip_block(const T * in, T * out, const int w, const int h, const int c)
 //! \param[in] sigma    Gaussian standard deviation
 //! \param[in] n        number of box blur pass
 //!
-float sigma_to_box_radius(int boxes[], const float sigma, const int n)  
+inline float sigma_to_box_radius(int boxes[], const float sigma, const int n)  
 {
     // ideal filter width
     float wi = std::sqrt((12*sigma*sigma/n)+1); 
