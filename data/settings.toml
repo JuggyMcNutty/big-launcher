@@ -1,0 +1,31 @@
+# Foyer settings (defaults). Copied to /etc/foyer/settings.toml on first run.
+[appearance]
+theme = "default"
+accent = ""          # "" = theme accent, or "#RRGGBB"
+wallpaper = ""       # "" = theme default | "focused-art" | "/path/to/image" | "#RRGGBB"
+ui_scale = 100       # percent
+overscan = 0         # percent (TV safe area)
+reduce_motion = false
+motion_speed = 1.0
+
+[sound]
+enabled = true
+volume = 7
+
+[clock]
+enabled = true
+format = "%H:%M"
+
+[screensaver]
+enabled = true
+idle_seconds = 300
+dim_percent = 70
+
+[input]
+gamepad = true
+gamepad_mappings = ""
+mouse_select = false
+
+[launcher]
+autostart = ""
+asset_budget_mb = 96

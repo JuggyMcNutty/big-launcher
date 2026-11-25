@@ -1,0 +1,5 @@
+title = "Twitch"
+subtitle = "Live streams"
+command = "foyer-app twitch"
+icon = "icons/twitch.svg"
+background = "#18122B"

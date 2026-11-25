@@ -1,0 +1,62 @@
+# Foyer default theme — dark, Big Picture style.
+# Copy this directory to /etc/foyer/themes/<name>/ to make your own; any key
+# you leave out falls back to these values (or set meta.inherit).
+
+[meta]
+title = "Midnight"
+author = "Foyer"
+
+[colors]
+bg         = "#0B0D12"
+surface    = "#171A22"
+surface_hi = "#232733"
+accent     = "#4F8CFF"
+on_accent  = "#FFFFFF"
+text       = "#F4F6FA"
+text_dim   = "#9AA3B5"
+danger     = "#F25555"
+focus_ring = "#FFFFFF"
+shadow     = "#00000099"
+scrim      = "#000000B0"
+
+[fonts]
+body    = "Inter-Medium.ttf"
+display = "Inter-Medium.ttf"
+
+[type]          # dp (1 dp = 1 px at 1080p)
+xs = 18
+sm = 22
+md = 27
+lg = 34
+xl = 48
+hero = 76
+
+[shape]
+radius_sm = 10
+radius_md = 16
+radius_lg = 24
+focus_ring_width = 4
+focus_scale = 1.07
+
+[layout]
+page_margin = 72
+tile_width = 300
+tile_aspect = 1.7778
+tile_gap = 26
+
+[motion]
+speed = 1.0
+
+[wallpaper]
+mode = "focused-art"   # focused-art | image | color
+dim = 0.55
+blur = 28
+
+# Per-breakpoint overrides (xs < 600px short edge, sm < 900, md < 1600, lg >= 1600)
+[breakpoint.xs.layout]
+page_margin = 36
+tile_width = 260
+tile_gap = 18
+
+[breakpoint.sm.layout]
+page_margin = 52

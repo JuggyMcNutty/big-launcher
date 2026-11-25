@@ -1,0 +1,20 @@
+[meta]
+title = "Daylight"
+author = "Foyer"
+inherit = "default"
+
+[colors]
+bg         = "#EEF1F6"
+surface    = "#FFFFFF"
+surface_hi = "#E2E7F0"
+accent     = "#2F6BFF"
+on_accent  = "#FFFFFF"
+text       = "#151821"
+text_dim   = "#5A6375"
+focus_ring = "#151821"
+shadow     = "#1A223340"
+scrim      = "#0B0D1266"
+
+[wallpaper]
+mode = "focused-art"
+dim = 0.15

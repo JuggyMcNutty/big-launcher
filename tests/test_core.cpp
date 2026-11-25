@@ -260,13 +260,3 @@ TEST_CASE("ui scale, overscan and aspect") {
 
 }
 
-// --- vendored toml++ ---
-#define TOML_EXCEPTIONS 1
-#include "../src/external/toml.hpp"
-TEST_SUITE("toml") {
-TEST_CASE("toml++ parses and serializes") {
-    auto t = toml::parse("[a]\nx = 1\nname = \"foyer\"\n");
-    CHECK(t["a"]["x"].value_or(0) == 1);
-    CHECK(t["a"]["name"].value_or(std::string()) == "foyer");
-}
-}

@@ -1,0 +1,5 @@
+title = "Prime Video"
+subtitle = "Amazon streaming"
+command = "foyer-app amazon"
+icon = "icons/amazon.svg"
+background = "#00A8E1"

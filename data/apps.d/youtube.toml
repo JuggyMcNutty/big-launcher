@@ -1,0 +1,5 @@
+title = "YouTube"
+subtitle = "TV mode, via Red"
+command = "foyer-app youtube"
+icon = "icons/red.svg"
+background = "#211F23"

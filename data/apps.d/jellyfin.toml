@@ -1,0 +1,5 @@
+title = "Jellyfin"
+subtitle = "Your media library"
+command = "foyer-app jellyfin"
+icon = "icons/jellyfin.svg"
+background = "#000B25"

@@ -1,6 +1,8 @@
 add_executable(foyer_tests
   test_core.cpp
   test_engine.cpp
+  test_model.cpp
+  ${PROJECT_SOURCE_DIR}/src/core/model.cpp
   ${PROJECT_SOURCE_DIR}/src/core/config.cpp
   ${PROJECT_SOURCE_DIR}/src/core/layout_model.cpp
   ${PROJECT_SOURCE_DIR}/src/input/action_mapper.cpp
@@ -19,6 +21,7 @@ add_executable(foyer_tests
   ${PROJECT_SOURCE_DIR}/src/ui/engine/engine.cpp
 )
 target_include_directories(foyer_tests PRIVATE ${PROJECT_BINARY_DIR})
+target_compile_definitions(foyer_tests PRIVATE FOYER_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(foyer_tests
   PkgConfig::SDL3
   PkgConfig::SDL3_IMAGE

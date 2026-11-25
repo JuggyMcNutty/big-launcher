@@ -1,0 +1,5 @@
+title = "Live TV"
+subtitle = "IPTV channels"
+command = "foyer-app iptv"
+icon = "icons/iptv.svg"
+background = "#14324F"

@@ -1,0 +1,13 @@
+[meta]
+title = "OLED Black"
+author = "Foyer"
+inherit = "default"
+
+[colors]
+bg         = "#000000"
+surface    = "#0E0E10"
+surface_hi = "#1C1C20"
+accent     = "#E5484D"
+
+[wallpaper]
+mode = "color"

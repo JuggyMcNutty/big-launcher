@@ -3,6 +3,7 @@ set(SOURCES
   core/app.cpp
   core/config.cpp
   core/layout_model.cpp
+  core/model.cpp
   platform/process.cpp
   platform/power.cpp
   platform/sysctl.cpp

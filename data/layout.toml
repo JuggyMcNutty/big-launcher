@@ -1,0 +1,41 @@
+# Foyer default layout: tabs -> rows -> tiles. Copied to /etc/foyer/layout.toml
+# on first run; edit it in Settings > Layout or by hand.
+
+[[tab]]
+id = "home"
+title = "Home"
+
+  [[tab.row]]
+  title = "Watch"
+  size = "large"
+  apps = ["jellyfin", "youtube", "amazon"]
+
+  [[tab.row]]
+  title = "Live"
+  apps = ["twitch", "iptv"]
+
+[[tab]]
+id = "apps"
+title = "Apps"
+kind = "library"
+
+[[tab]]
+id = "settings"
+title = "Settings"
+kind = "settings"
+
+[[power]]
+title = "Restart UI"
+command = ":quit"
+
+[[power]]
+title = "Sleep"
+command = ":sleep"
+
+[[power]]
+title = "Reboot"
+command = ":restart"
+
+[[power]]
+title = "Shut down"
+command = ":shutdown"
