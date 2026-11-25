@@ -223,7 +223,74 @@ void BL::App::close_app()
     }
 }
 
-void BL::App::execute_command(const std::string &command)
+namespace BL {
+    static std::string slugify(const std::string &s)
+    {
+        std::string out;
+        for (char c : s) {
+            if (isalnum((unsigned char) c)) out += (char) tolower((unsigned char) c);
+            else if (!out.empty() && out.back() != '-') out += '-';
+        }
+        while (!out.empty() && out.back() == '-') out.pop_back();
+        return out.empty() ? "app" : out;
+    }
+
+    static std::string app_log_dir()
+    {
+        const char *state = getenv("XDG_STATE_HOME");
+        if (state && *state) return join_paths(state, "htpc", "apps").string();
+        const char *home = getenv("HOME");
+        return join_paths(home && *home ? home : "/tmp", ".local", "state", "htpc", "apps").string();
+    }
+
+    // Last non-empty line of a file (bounded read from the end).
+    static std::string last_log_line(const std::string &path)
+    {
+        FILE *f = fopen(path.c_str(), "rb");
+        if (!f) return "";
+        fseek(f, 0, SEEK_END);
+        long size = ftell(f);
+        long start = size > 4096 ? size - 4096 : 0;
+        fseek(f, start, SEEK_SET);
+        std::string buf(size - start, '\0');
+        size_t n = fread(buf.data(), 1, buf.size(), f);
+        fclose(f);
+        buf.resize(n);
+        std::string last;
+        for (const auto &line : split_lines(buf)) {
+            std::string t = line;
+            while (!t.empty() && isspace((unsigned char) t.back())) t.pop_back();
+            if (!t.empty()) last = t;
+        }
+        if (last.size() > 90) last = last.substr(0, 87) + "...";
+        return last;
+    }
+}
+
+void BL::App::report_app_exit(int code)
+{
+    Uint64 ran = SDL_GetTicks() - app_started_;
+    std::string name = app_title_.empty() ? app_command_ : app_title_;
+    std::string tail = last_log_line(app_log_);
+    BL::logger::info("App '{}' exited with status {} after {} ms (log: {})", name, code, ran, app_log_);
+    if (code == 0 && ran >= 3000)
+        return;  // normal quit
+    if (code == 0)
+        return;  // quick clean exit (e.g. app handed off): not an error
+    std::string msg;
+    if (code == 127)
+        msg = name + " failed: command not found (" + app_command_ + ")";
+    else if (code >= 128)
+        msg = name + " crashed (signal " + std::to_string(code - 128) + ")";
+    else
+        msg = name + " exited with error " + std::to_string(code);
+    if (!tail.empty())
+        msg += ": " + tail;
+    BL::logger::warn("{}", msg);
+    show_toast(msg);
+}
+
+void BL::App::execute_command(const std::string &command, const std::string &title)
 {
     BL::logger::debug("Executing command '{}'", command);
     if (command.starts_with(":")) {
@@ -253,10 +320,14 @@ void BL::App::execute_command(const std::string &command)
         return;
     }
 
-    // Launch an application
-    app_proc_ = Process::spawn(command);
+    // Launch an application; stdout/stderr go to a per-app log
+    app_title_ = title;
+    app_command_ = command;
+    app_log_ = join_paths(app_log_dir(), slugify(title.empty() ? command : title) + ".log").string();
+    app_started_ = SDL_GetTicks();
+    app_proc_ = Process::spawn(command, app_log_);
     if (app_proc_.alive()) {
-        BL::logger::info("Launched app (pid {})", app_proc_.pid());
+        BL::logger::info("Launched '{}' (pid {}, log {})", title.empty() ? command : title, app_proc_.pid(), app_log_);
         mark_dirty();
     } else {
         BL::logger::error("Failed to launch '{}'", command);
@@ -425,7 +496,6 @@ void BL::App::update_app_state()
     if (app_proc_.alive()) {
         if (app_proc_.poll()) {
             int code = app_proc_.exit_status();
-            BL::logger::info("App exited with status {}", code);
             app_proc_ = Process();
             // Dismiss the quick menu overlay (if showing) since the app is gone.
             if (overlay_proc_.alive()) {
@@ -433,8 +503,7 @@ void BL::App::update_app_state()
                 overlay_proc_ = Process();
             }
             mark_dirty();
-            if (code != 0)
-                show_toast("App exited with an error");
+            report_app_exit(code);
         }
     }
     // Reap the overlay process if it exited on its own.

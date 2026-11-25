@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstdint>
+#include <sys/wait.h>
 
 #include <SDL3/SDL.h>
 
@@ -122,10 +123,17 @@ void BL::JobQueue::execute(std::shared_ptr<Job> job)
             if (streaming) job->progress.push_back(line);
         }
         int status = pclose(fp);
+        int code = (status >= 0 && WIFEXITED(status)) ? WEXITSTATUS(status) : -1;
         std::unique_lock lock(job->mutex);
         job->result.ok = (status == 0);
-        job->result.exit_code = status;
+        job->result.exit_code = code;
         job->result.output = job->output;
+        if (!job->result.ok) {
+            std::string tail = job->output.size() > 300 ? job->output.substr(job->output.size() - 300) : job->output;
+            while (!tail.empty() && (tail.back() == '\n' || tail.back() == ' ')) tail.pop_back();
+            BL::logger::warn("Job {} failed (exit {}): {}{}{}", job->id, code, job->command,
+                             tail.empty() ? "" : " -> ", tail);
+        }
     }
     SDL_Event e; e.type = EVT_JOB_DONE; e.user.data1 = (void*)(intptr_t) job->id;
     SDL_PushEvent(&e);

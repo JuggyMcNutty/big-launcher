@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <cerrno>
 #include <cstring>
+#include <filesystem>
 
 #include "process.hpp"
 #include "../render/logger.hpp"
@@ -73,8 +74,12 @@ void BL::Process::release()
     pid_ = -1;
 }
 
-BL::Process BL::Process::spawn(const std::string &command)
+BL::Process BL::Process::spawn(const std::string &command, const std::string &log_path)
 {
+    if (!log_path.empty()) {
+        std::error_code ec;
+        std::filesystem::create_directories(std::filesystem::path(log_path).parent_path(), ec);
+    }
     pid_t pid = fork();
     if (pid < 0) {
         BL::logger::error("Could not fork new process");
@@ -84,6 +89,13 @@ BL::Process BL::Process::spawn(const std::string &command)
         // Child: new session so we can kill the whole group later
         if (setsid() < 0)
             _exit(127);
+        if (!log_path.empty()) {
+            int fd = open(log_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+            if (fd >= 0) {
+                dup2(fd, STDOUT_FILENO);
+                dup2(fd, STDERR_FILENO);
+            }
+        }
         const char *args[] = {"/bin/sh", "-c", command.c_str(), nullptr};
         execvp("/bin/sh", (char* const*) args);
         _exit(127);  // exec failed

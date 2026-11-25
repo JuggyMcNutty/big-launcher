@@ -212,7 +212,7 @@ namespace BL {
         if (idx < 0 || idx >= (int) menu.entries.size())
             return;
         app_.play_select();
-        app_.execute_command(menu.entries[idx].command);
+        app_.execute_command(menu.entries[idx].command, menu.entries[idx].title);
     }
 
     bool HomeScreen::on_action(Action action)

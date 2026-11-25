@@ -10,7 +10,9 @@ namespace BL {
     public:
         // Launch a command via /bin/sh -c in a new session. Returns a Process
         // (pid()==-1 on failure).
-        static Process spawn(const std::string &command);
+        // If log_path is non-empty, the child's stdout+stderr are appended
+        // to that file (directories are created).
+        static Process spawn(const std::string &command, const std::string &log_path = "");
         ~Process();
 
         bool alive() const { return pid_ > 0 && !reaped_; }

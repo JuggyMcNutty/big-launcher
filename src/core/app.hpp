@@ -56,7 +56,7 @@ namespace BL {
         StatusBar& status_bar() { return status_bar_; }
 
         // Command execution (from tiles / hotkeys / quick menu)
-        void execute_command(const std::string &command);
+        void execute_command(const std::string &command, const std::string &title = "");
 
         // Feedback
         void play_click();
@@ -109,6 +109,12 @@ namespace BL {
         StatusBar status_bar_;
         Process app_proc_;
         Process overlay_proc_;
+        // Launched app bookkeeping (for failure diagnostics)
+        std::string app_title_;
+        std::string app_command_;
+        std::string app_log_;
+        Uint64 app_started_ = 0;
+        void report_app_exit(int code);
         Uint64 last_status_refresh_ = 0;
 
         SDL_Window *window_ = nullptr;
