@@ -6,6 +6,7 @@ add_executable(foyer_tests
   ${PROJECT_SOURCE_DIR}/src/platform/process.cpp
   ${PROJECT_SOURCE_DIR}/src/platform/sysctl.cpp
   ${PROJECT_SOURCE_DIR}/src/render/util.cpp
+  ${PROJECT_SOURCE_DIR}/src/ui/engine/units.cpp
 )
 target_include_directories(foyer_tests PRIVATE ${PROJECT_BINARY_DIR})
 target_link_libraries(foyer_tests

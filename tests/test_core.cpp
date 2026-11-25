@@ -217,3 +217,56 @@ TEST_CASE("tolerates malformed and legacy output") {
 }
 
 }
+
+// --- dp units / breakpoints ---
+#include "../src/ui/engine/units.hpp"
+TEST_SUITE("Units") {
+
+TEST_CASE("1080p is 1:1") {
+    Metrics m; m.configure(1920, 1080);
+    CHECK(m.scale() == doctest::Approx(1.0));
+    CHECK(m.dp(100) == doctest::Approx(100));
+    CHECK(m.breakpoint() == Breakpoint::MD);
+}
+
+TEST_CASE("4K doubles, 720p shrinks with boost, 480p boosted") {
+    Metrics m;
+    m.configure(3840, 2160);
+    CHECK(m.scale() == doctest::Approx(2.0));
+    CHECK(m.breakpoint() == Breakpoint::LG);
+    m.configure(1280, 720);
+    CHECK(m.breakpoint() == Breakpoint::SM);
+    CHECK(m.scale() == doctest::Approx(720.0 / 1080.0 * 1.10));
+    m.configure(640, 480);
+    CHECK(m.breakpoint() == Breakpoint::XS);
+    CHECK(m.dp(30) > 15.f);   // body text stays readable at 480p
+}
+
+TEST_CASE("ui scale, overscan and aspect") {
+    Metrics m;
+    m.configure(1920, 1080, 150, 5);
+    CHECK(m.scale() == doctest::Approx(1.5));
+    CHECK(m.safe_insets().left == doctest::Approx(96));
+    CHECK(m.safe_rect().h == doctest::Approx(1080 - 2 * 54));
+    m.configure(2560, 1080);   // 21:9: same scale, more width
+    CHECK(m.scale() == doctest::Approx(1.0));
+    CHECK(m.safe_width_dp() == doctest::Approx(2560));
+    m.configure(1080, 1920);   // portrait uses the short edge
+    CHECK(m.scale() == doctest::Approx(1.0));
+    m.configure(1920, 1080, 1000, 99);   // clamped
+    CHECK(m.scale() == doctest::Approx(2.5));
+    CHECK(m.safe_insets().left == doctest::Approx(384));
+}
+
+}
+
+// --- vendored toml++ ---
+#define TOML_EXCEPTIONS 1
+#include "../src/external/toml.hpp"
+TEST_SUITE("toml") {
+TEST_CASE("toml++ parses and serializes") {
+    auto t = toml::parse("[a]\nx = 1\nname = \"foyer\"\n");
+    CHECK(t["a"]["x"].value_or(0) == 1);
+    CHECK(t["a"]["name"].value_or(std::string()) == "foyer");
+}
+}

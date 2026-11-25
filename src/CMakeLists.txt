@@ -8,6 +8,7 @@ set(SOURCES
   platform/sysctl.cpp
   input/action_mapper.cpp
   ui/list_screen.cpp
+  ui/engine/units.cpp
   ui/anim.cpp
   ui/text_sprite.cpp
   ui/text_input.cpp
