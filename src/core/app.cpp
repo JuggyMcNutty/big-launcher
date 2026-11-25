@@ -105,8 +105,13 @@ App::App(const Options &o): opt_(o)
     load_data();
     apply_appearance();
     if (settings_.sound && !opt_.screenshot.size()) {
-        try { sound_ = std::make_unique<Sound>(settings_.sound_volume); }
-        catch (...) { sound_.reset(); }
+        // Opening the audio device can block for a long time (or forever)
+        // when the PipeWire graph is unhealthy; never stall the UI for it.
+        int vol = settings_.sound_volume;
+        sound_init_ = std::thread([this, vol] {
+            try { sound_ = std::make_unique<Sound>(vol); sound_ready_ = true; }
+            catch (...) { Foyer::logger::warn("UI sounds unavailable"); }
+        });
     }
     engine_->on_click = [this] { play_click(); };
     engine_->on_select = [this] { play_select(); };
@@ -147,7 +152,12 @@ App::~App()
 #endif
     if (jobs_) jobs_->stop();
     engine_.reset();   // layers first (they may reference the window)
-    sound_.reset();
+    if (sound_init_.joinable()) {
+        if (sound_ready_) sound_init_.join();
+        else sound_init_.detach();   // stuck in the audio backend: don't hang on exit
+    }
+    if (sound_ready_) sound_.reset();
+    else (void) sound_.release();
     if (renderer_) SDL_DestroyRenderer(renderer_);
     if (window_) SDL_DestroyWindow(window_);
     TTF_Quit();
@@ -319,8 +329,8 @@ std::string App::icon(const std::string &name) const
     return resolve_art("icons/ui/" + name + ".svg");
 }
 
-void App::play_click() { if (sound_) sound_->play_click(); }
-void App::play_select() { if (sound_) sound_->play_select(); }
+void App::play_click() { if (sound_ready_ && sound_) sound_->play_click(); }
+void App::play_select() { if (sound_ready_ && sound_) sound_->play_select(); }
 
 void App::toast(const std::string &msg, bool error)
 {

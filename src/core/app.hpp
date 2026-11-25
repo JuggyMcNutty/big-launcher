@@ -3,6 +3,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
+#include <atomic>
 
 #include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
@@ -105,6 +107,8 @@ namespace Foyer {
         std::unique_ptr<ui::Engine> engine_;
         std::unique_ptr<JobQueue> jobs_;
         std::unique_ptr<Sound> sound_;
+        std::thread sound_init_;
+        std::atomic<bool> sound_ready_{false};
         Process app_proc_;
         Process overlay_proc_;
         std::string app_title_, app_command_, app_log_;
