@@ -640,9 +640,21 @@ namespace Foyer {
         fs::path apps = fs::path(cfg) / "apps.d";
         fs::create_directories(apps, ec);
         for (auto &[id, a] : r.apps) {
-            // don't clobber packaged/user app definitions
+            // don't clobber user app definitions, and prefer packaged ones
+            // (they carry proper artwork) when the command matches
             if (fs::exists(apps / (id + ".toml"), ec)) continue;
-            save_app(apps.string(), a);
+            bool shipped = false;
+            for (auto &d : Paths::data_dirs()) {
+                if (d == cfg) continue;
+                if (fs::exists(fs::path(d) / "apps.d" / (id + ".toml"), ec)) { shipped = true; break; }
+            }
+            if (shipped && a.command == "foyer-app " + id) continue;
+            AppEntry fixed = a;
+            // legacy relative art that no longer resolves -> drop (tile shows the title)
+            for (std::string *p : {&fixed.icon, &fixed.tile}) {
+                if (!p->empty() && (*p)[0] != '/' && !fs::exists(*p, ec) && Paths::find_data(*p).empty()) p->clear();
+            }
+            save_app(apps.string(), fixed);
         }
         bool ok = save_layout(lt.string(), r.layout);
         fs::path st = fs::path(cfg) / "settings.toml";
