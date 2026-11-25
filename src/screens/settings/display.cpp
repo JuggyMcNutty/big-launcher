@@ -62,7 +62,7 @@ bool Foyer::DisplaySettings::on_action(Action action)
 void Foyer::DisplaySettings::on_select(int index)
 {
     if (index == item_resolution) {
-        // Cycle through common modes; htpc-ctl rewrites session.conf and
+        // Cycle through common modes; foyer-ctl rewrites session.conf and
         // restarts the session.
         static const char *modes[] = {"1920x1080@60", "1280x720@60", "1920x1080@50", nullptr};
         int cur = 0;

@@ -4,7 +4,7 @@
 #include <vector>
 
 namespace Foyer {
-    // Builds htpc-ctl command strings. htpc-ctl is the single POSIX-sh system
+    // Builds foyer-ctl command strings. foyer-ctl is the single POSIX-sh system
     // control backend on the box (supersedes htpc-net). It is always invoked
     // through the job queue, never synchronously.
     std::string ctl(const std::string &group, const std::string &cmd,
@@ -12,7 +12,7 @@ namespace Foyer {
 }
 
 namespace Foyer {
-    // Parsed `htpc-ctl net status` output.
+    // Parsed `foyer-ctl net status` output.
     struct NetIface {
         std::string name, type, state, ip, mac, gateway, dns, speed;
     };

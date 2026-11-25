@@ -24,7 +24,7 @@ namespace Foyer {
                     const std::vector<std::string> &args)
     {
         std::ostringstream oss;
-        oss << "htpc-ctl " << group << " " << cmd;
+        oss << "foyer-ctl " << group << " " << cmd;
         for (const auto &a : args)
             oss << " " << shell_quote(a);
         return oss.str();

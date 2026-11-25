@@ -7,7 +7,7 @@
 #include "../../platform/sysctl.hpp"
 
 namespace Foyer {
-    // Network page: per-interface details (from `htpc-ctl net status` iface
+    // Network page: per-interface details (from `foyer-ctl net status` iface
     // lines), WiFi state, scan + connect.
     class NetworkSettings : public ListScreen {
     public:

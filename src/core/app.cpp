@@ -53,8 +53,8 @@ namespace Foyer {
 
 namespace Foyer {
     // init-spawned sessions get a minimal PATH without /usr/local/bin, where
-    // the htpc-* wrappers, htpc-ctl and locally built apps live. Without it
-    // every launch exits 127 and every htpc-ctl job fails.
+    // the foyer-* wrappers, foyer-ctl and locally built apps live. Without it
+    // every launch exits 127 and every foyer-ctl job fails.
     static void ensure_path()
     {
         const char *cur = getenv("PATH");
@@ -238,9 +238,9 @@ namespace Foyer {
     static std::string app_log_dir()
     {
         const char *state = getenv("XDG_STATE_HOME");
-        if (state && *state) return join_paths(state, "htpc", "apps").string();
+        if (state && *state) return join_paths(state, "foyer", "apps").string();
         const char *home = getenv("HOME");
-        return join_paths(home && *home ? home : "/tmp", ".local", "state", "htpc", "apps").string();
+        return join_paths(home && *home ? home : "/tmp", ".local", "state", "foyer", "apps").string();
     }
 
     // Last non-empty line of a file (bounded read from the end).

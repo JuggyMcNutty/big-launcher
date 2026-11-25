@@ -99,7 +99,7 @@ void Foyer::AudioSettings::on_select(int index)
             if (sinks_.size() > 1) {
                 sink_index_ = (sink_index_ + 1) % (int) sinks_.size();
                 set_value(item_output, sinks_[sink_index_]);
-                // Set the sink by name (htpc-ctl resolves)
+                // Set the sink by name (foyer-ctl resolves)
                 app_.jobs().run(ctl("audio", "sink/set", {sinks_[sink_index_]}), nullptr);
             }
             break;
