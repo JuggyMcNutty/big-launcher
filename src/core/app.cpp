@@ -34,7 +34,8 @@ namespace Foyer {
         auto file_sink = std::make_shared<spdlog::sinks::basic_lazy_file_sink_st>((fs::path(dir) / "foyer.log").string(), true);
         file_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] %v");
         auto console = std::make_shared<spdlog::sinks::stdout_color_sink_st>();
-        console->set_level(spdlog::level::warn);
+        const char *lvl = getenv("FOYER_LOG_STDERR");   // e.g. info (boot tests)
+        console->set_level(lvl && *lvl ? spdlog::level::from_str(lvl) : spdlog::level::warn);
         console->set_pattern("[%^%l%$] %v");
         std::vector<spdlog::sink_ptr> sinks{file_sink, console};
         auto logger = std::make_shared<spdlog::logger>("foyer", sinks.begin(), sinks.end());
