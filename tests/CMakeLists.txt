@@ -9,7 +9,6 @@ add_executable(foyer_tests
   ${PROJECT_SOURCE_DIR}/src/platform/process.cpp
   ${PROJECT_SOURCE_DIR}/src/platform/sysctl.cpp
   ${PROJECT_SOURCE_DIR}/src/render/util.cpp
-  ${PROJECT_SOURCE_DIR}/src/render/image.cpp
   ${PROJECT_SOURCE_DIR}/src/ui/engine/units.cpp
   ${PROJECT_SOURCE_DIR}/src/ui/engine/node.cpp
   ${PROJECT_SOURCE_DIR}/src/ui/engine/canvas.cpp
@@ -29,5 +28,6 @@ target_link_libraries(foyer_tests
   PkgConfig::LIBXML2
   PkgConfig::SPDLOG
   PkgConfig::FMT
+  Threads::Threads
 )
 add_test(NAME foyer_tests COMMAND foyer_tests)

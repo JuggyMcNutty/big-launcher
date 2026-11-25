@@ -68,6 +68,7 @@ namespace Foyer::ui {
         void paint(Canvas &c, const SDL_FRect &r, float alpha) override;
         bool enabled = true;
         bool has_bg_base_ = false;    // draw the surface colour when unfocused (cards)
+        bool base_hi = false;         // ...using surface_hi (buttons on a surface)
         float highlight() const { return hl_.get(); }
     private:
         Animated hl_{0.f};

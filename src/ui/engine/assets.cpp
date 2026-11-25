@@ -6,7 +6,9 @@
 
 #include "assets.hpp"
 #include "../../render/logger.hpp"
+#define NANOSVG_IMPLEMENTATION
 #include "../../external/nanosvg.h"
+#define NANOSVGRAST_IMPLEMENTATION
 #include "../../external/nanosvgrast.h"
 #include "../../external/fast_gaussian_blur_template.h"
 
@@ -38,25 +40,25 @@ namespace Foyer::ui {
         clear();
     }
 
-    static std::string make_key(const std::string &p, int w, int h, float blur, bool cover)
+    static std::string make_key(const std::string &p, int w, int h, float blur, bool cover, float radius)
     {
         return p + '\x1f' + std::to_string(w) + 'x' + std::to_string(h) + '\x1f' +
-               std::to_string((int) std::lround(blur * 10)) + (cover ? "c" : "f");
+               std::to_string((int) std::lround(blur * 10)) + (cover ? "c" : "f") + std::to_string((int) radius);
     }
 
-    AssetHandle AssetCache::request(const std::string &path, int w, int h, float blur, bool cover)
+    AssetHandle AssetCache::request(const std::string &path, int w, int h, float blur, bool cover, float radius)
     {
         // Quantise sizes so tiny animated size changes don't thrash the cache.
         auto q = [](int v) { return v <= 0 ? 0 : std::max(8, (v + 7) / 8 * 8); };
         w = q(w); h = q(h);
-        std::string key = make_key(path, w, h, blur, cover);
+        std::string key = make_key(path, w, h, blur, cover, radius);
         auto it = map_.find(key);
         if (it != map_.end()) {
             it->second->last_used = SDL_GetTicks();
             return it->second;
         }
         auto a = std::make_shared<Asset>();
-        a->key = key; a->path = path; a->w = w; a->h = h; a->blur = blur; a->cover = cover;
+        a->key = key; a->path = path; a->w = w; a->h = h; a->blur = blur; a->cover = cover; a->radius = radius;
         a->last_used = SDL_GetTicks();
         map_[key] = a;
         pending_++;
@@ -85,7 +87,7 @@ namespace Foyer::ui {
                 pending_--;
                 continue;
             }
-            SDL_Surface *s = decode(a->path, a->w, a->h, a->blur, a->cover);
+            SDL_Surface *s = decode(a->path, a->w, a->h, a->blur, a->cover, a->radius);
             {
                 std::lock_guard l(mu_);
                 if (s) { a->surface = s; a->state = 1; decoded_.push_back(a); }
@@ -178,7 +180,41 @@ namespace Foyer::ui {
         oh = std::max(1, (int) std::lround(sh * s));
     }
 
-    SDL_Surface* AssetCache::decode(const std::string &path, int bw, int bh, float blur, bool cover)
+    static SDL_Surface* crop_center(SDL_Surface *s, int w, int h)
+    {
+        if (!s || w <= 0 || h <= 0 || (s->w <= w && s->h <= h)) return s;
+        w = std::min(w, s->w); h = std::min(h, s->h);
+        SDL_Surface *o = SDL_CreateSurface(w, h, SDL_PIXELFORMAT_RGBA32);
+        if (!o) return s;
+        SDL_Rect src{(s->w - w) / 2, (s->h - h) / 2, w, h};
+        SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_NONE);
+        SDL_BlitSurface(s, &src, o, nullptr);
+        SDL_DestroySurface(s);
+        return o;
+    }
+
+    static void round_corners(SDL_Surface *s, float r)
+    {
+        if (!s || r < 1.f) return;
+        int w = s->w, h = s->h;
+        r = std::min(r, std::min(w, h) / 2.f);
+        for (int y = 0; y < h; y++) {
+            Uint8 *row = (Uint8*) s->pixels + y * s->pitch;
+            float py = y + 0.5f;
+            float dy = py < r ? r - py : (py > h - r ? py - (h - r) : 0.f);
+            if (dy <= 0.f) continue;
+            for (int x = 0; x < w; x++) {
+                float px = x + 0.5f;
+                float dx = px < r ? r - px : (px > w - r ? px - (w - r) : 0.f);
+                if (dx <= 0.f) continue;
+                float d = std::sqrt(dx * dx + dy * dy) - r;
+                float cov = std::clamp(0.5f - d, 0.f, 1.f);
+                row[x * 4 + 3] = (Uint8) (row[x * 4 + 3] * cov);
+            }
+        }
+    }
+
+    SDL_Surface* AssetCache::decode(const std::string &path, int bw, int bh, float blur, bool cover, float radius)
     {
         SDL_Surface *out = nullptr;
         bool svg = path.size() > 4 && strcasecmp(path.c_str() + path.size() - 4, ".svg") == 0;
@@ -218,7 +254,9 @@ namespace Foyer::ui {
                 SDL_DestroySurface(src);
             }
         }
+        if (out && cover && bw > 0 && bh > 0) out = crop_center(out, bw, bh);
         if (out && blur > 0.5f) blur_surface(out, blur);
+        if (out && cover && radius >= 1.f) round_corners(out, radius);
         return out;
     }
 

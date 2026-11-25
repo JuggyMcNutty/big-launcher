@@ -35,10 +35,15 @@ namespace Foyer {
         // Call from the main loop when a job user-event is received.
         // Returns true if the event was a job event.
         bool handle_event(const SDL_Event &event);
+        // True while any job is queued, running, or awaiting delivery.
+        bool busy();
         void stop();
 
-        static constexpr uint32_t EVT_JOB_DONE     = 0x80000001;
-        static constexpr uint32_t EVT_JOB_PROGRESS = 0x80000002;
+        // Registered with SDL_RegisterEvents on first use. (The previous
+        // hard-coded 0x8000000x values were outside SDL's user-event range,
+        // so SDL_PushEvent silently dropped every job result.)
+        static uint32_t evt_done();
+        static uint32_t evt_progress();
 
     private:
         struct Job {

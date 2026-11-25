@@ -22,7 +22,8 @@ namespace Foyer::ui {
         std::string path;
         int w = 0, h = 0;         // requested box (px); 0 = natural size
         float blur = 0.f;         // px sigma
-        bool cover = false;       // rasterise to cover the box (else contain)
+        bool cover = false;       // rasterise to cover the box (else contain); cover crops to the box
+        float radius = 0.f;       // px; rounded-corner alpha mask (cover only)
 
         std::atomic<int> state{0};          // 0 queued, 1 decoded (surface), 2 ready (texture), -1 failed
         SDL_Surface *surface = nullptr;     // worker -> UI thread
@@ -48,7 +49,8 @@ namespace Foyer::ui {
         AssetCache &operator=(const AssetCache &) = delete;
 
         // Request an image at a px box. Returns immediately.
-        AssetHandle request(const std::string &path, int w, int h, float blur_px = 0.f, bool cover = false);
+        AssetHandle request(const std::string &path, int w, int h, float blur_px = 0.f, bool cover = false,
+                            float radius_px = 0.f);
         // Upload decoded surfaces (UI thread). Returns true if anything became ready.
         bool pump(int max_uploads = 4);
         void evict();
@@ -61,7 +63,8 @@ namespace Foyer::ui {
         bool busy() const { return pending_.load() > 0; }
 
         // Synchronous decode (used by workers and tests): file -> RGBA32 surface.
-        static SDL_Surface* decode(const std::string &path, int w, int h, float blur_px, bool cover);
+        static SDL_Surface* decode(const std::string &path, int w, int h, float blur_px, bool cover,
+                                   float radius_px = 0.f);
         static void blur_surface(SDL_Surface *s, float sigma);
 
     private:

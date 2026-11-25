@@ -198,14 +198,18 @@ namespace Foyer::ui {
         return t ? Size{(float) t->w, (float) t->h} : Size{0.f, 0.f};
     }
 
-    void Text::paint(Canvas &c, const SDL_FRect &r, float alpha)
+    void Text::paint(Canvas &c, const SDL_FRect &r0, float alpha)
     {
         (void) alpha;
         if (text_.empty() || !engine_) return;
         Engine &e = *engine_;
-        auto t = texture_for(e, std::max(1, (int) r.w));
+        int wrap = std::max(1, (int) (r0.w - e.metrics().dp(style.pad.l + style.pad.r)));
+        auto t = texture_for(e, wrap);
         if (!t || !t->tex) return;
         SDL_Color col = has_color ? color : (dim ? e.tokens().text_dim : e.tokens().text);
+        const auto &m = e.metrics();
+        SDL_FRect r{r0.x + m.dp(style.pad.l), r0.y + m.dp(style.pad.t),
+                    r0.w - m.dp(style.pad.l + style.pad.r), r0.h - m.dp(style.pad.t + style.pad.b)};
         float x = r.x;
         if (align == TextAlign::Center) x = r.x + (r.w - t->w) / 2;
         else if (align == TextAlign::Right) x = r.x + r.w - t->w;

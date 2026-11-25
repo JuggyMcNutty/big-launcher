@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.18)
 project("foyer"
   LANGUAGES C CXX
-  VERSION 2.1.0
+  VERSION 3.0.0
 )
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,6 +19,9 @@ else()
   add_compile_options(-Wall -Wextra)
 endif ()
 
+include(GNUInstallDirs)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 find_package(PkgConfig MODULE REQUIRED)
 pkg_check_modules(SDL3 REQUIRED IMPORTED_TARGET sdl3)
 pkg_check_modules(SDL3_IMAGE REQUIRED IMPORTED_TARGET sdl3-image)
@@ -46,5 +49,8 @@ configure_file(${PROJECT_SOURCE_DIR}/config/config.h.in ${PROJECT_BINARY_DIR}/lc
 add_subdirectory(src)
 
 # Tests
-enable_testing()
-add_subdirectory(tests)
+option(FOYER_TESTS "Build unit tests" ON)
+if (FOYER_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif ()

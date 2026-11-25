@@ -174,19 +174,16 @@ std::string Foyer::find_file(const char *filename)
         }
     }
 
-    if constexpr(file_type == Foyer::FileType::FONT) {
+    if constexpr(file_type == Foyer::FileType::FONT || file_type == Foyer::FileType::AUDIO) {
         if (!paths.size()) {
-            paths.resize(2);
-            paths[0] = Foyer::join_paths(safe_exec_dir(), "assets", "fonts");
-            paths[1] = SYSTEM_FONTS_DIR;
-        }
-    }
-
-    if constexpr(file_type == Foyer::FileType::AUDIO) {
-        if (!paths.size()) {
-            paths.resize(2);
-            paths[0] = Foyer::join_paths(safe_exec_dir(), "assets", "sounds");
-            paths[1] = SYSTEM_SOUNDS_DIR;
+            const char *sub = file_type == Foyer::FileType::FONT ? "fonts" : "sounds";
+            if (const char *d = getenv("FOYER_DATA_DIR"); d && *d)
+                paths.push_back(Foyer::join_paths(d, sub));
+            paths.push_back(Foyer::join_paths(safe_exec_dir(), "data", sub));
+            paths.push_back(Foyer::join_paths(safe_exec_dir(), "..", "data", sub));
+            paths.push_back(Foyer::join_paths(safe_exec_dir(), "assets", sub));
+            paths.push_back(Foyer::join_paths(SYSTEM_SHARE_DIR, sub));
+            paths.push_back(Foyer::join_paths("/usr/share/foyer", sub));
         }
     }
     for (const std::filesystem::path &path : paths) {

@@ -13,9 +13,6 @@ namespace Foyer {
         VolUp, VolDown, Mute,
     };
 
-    // SDL user event used to deliver global input (evdev/CEC) to the main
-    // thread; payload is an Action in user.data1.
-    static constexpr uint32_t EVT_GLOBAL_ACTION = 0x80000003;
 
     inline const char* action_name(Action a)
     {

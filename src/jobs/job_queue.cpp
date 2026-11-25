@@ -100,7 +100,7 @@ void Foyer::JobQueue::execute(std::shared_ptr<Job> job)
                 job->output += line;
                 if (streaming) job->progress.push_back(line);
                 if (streaming) {
-                    SDL_Event e; e.type = EVT_JOB_PROGRESS; e.user.data1 = (void*)(intptr_t) job->id;
+                    SDL_Event e; e.type = evt_progress(); e.user.data1 = (void*)(intptr_t) job->id;
                     SDL_PushEvent(&e);
                 }
                 line.clear();
@@ -111,7 +111,7 @@ void Foyer::JobQueue::execute(std::shared_ptr<Job> job)
                 job->output += line + "\n";
                 if (streaming) job->progress.push_back(line);
                 if (streaming) {
-                    SDL_Event e; e.type = EVT_JOB_PROGRESS; e.user.data1 = (void*)(intptr_t) job->id;
+                    SDL_Event e; e.type = evt_progress(); e.user.data1 = (void*)(intptr_t) job->id;
                     SDL_PushEvent(&e);
                 }
                 line.clear();
@@ -135,13 +135,13 @@ void Foyer::JobQueue::execute(std::shared_ptr<Job> job)
                              tail.empty() ? "" : " -> ", tail);
         }
     }
-    SDL_Event e; e.type = EVT_JOB_DONE; e.user.data1 = (void*)(intptr_t) job->id;
+    SDL_Event e; e.type = evt_done(); e.user.data1 = (void*)(intptr_t) job->id;
     SDL_PushEvent(&e);
 }
 
 bool Foyer::JobQueue::handle_event(const SDL_Event &event)
 {
-    if (event.type != EVT_JOB_DONE && event.type != EVT_JOB_PROGRESS)
+    if (event.type != evt_done() && event.type != evt_progress())
         return false;
     uint32_t id = (uint32_t)(intptr_t) event.user.data1;
     std::shared_ptr<Job> job;
@@ -152,7 +152,7 @@ bool Foyer::JobQueue::handle_event(const SDL_Event &event)
             return true;
         job = it->second;
     }
-    if (event.type == EVT_JOB_PROGRESS) {
+    if (event.type == evt_progress()) {
         std::string line;
         {
             std::unique_lock lock(job->mutex);
@@ -178,3 +178,17 @@ bool Foyer::JobQueue::handle_event(const SDL_Event &event)
     }
     return true;
 }
+
+bool Foyer::JobQueue::busy()
+{
+    std::unique_lock lock(jobs_mutex_);
+    return !jobs_.empty();
+}
+
+static uint32_t job_event_base()
+{
+    static uint32_t base = SDL_RegisterEvents(2);
+    return base;
+}
+uint32_t Foyer::JobQueue::evt_done() { return job_event_base(); }
+uint32_t Foyer::JobQueue::evt_progress() { return job_event_base() + 1; }

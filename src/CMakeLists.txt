@@ -8,7 +8,6 @@ set(SOURCES
   platform/power.cpp
   platform/sysctl.cpp
   input/action_mapper.cpp
-  ui/list_screen.cpp
   ui/engine/units.cpp
   ui/engine/node.cpp
   ui/engine/canvas.cpp
@@ -18,29 +17,15 @@ set(SOURCES
   ui/engine/focus.cpp
   ui/engine/scroller.cpp
   ui/engine/engine.cpp
-  ui/anim.cpp
-  ui/text_sprite.cpp
-  ui/text_input.cpp
-  ui/status_bar.cpp
-  ui/shapes.cpp
-  screens/home.cpp
-  screens/quick_menu.cpp
-  screens/settings/hub.cpp
-  screens/settings/audio.cpp
-  screens/settings/display.cpp
-  screens/settings/network.cpp
-  screens/settings/bluetooth.cpp
-  screens/settings/system.cpp
-  screens/settings/power.cpp
-  screens/settings/launcher.cpp
-  screens/settings/layout_editor.cpp
+  screens/kit.cpp
+  screens/shell.cpp
+  screens/settings.cpp
+  screens/keyboard.cpp
+  screens/editor.cpp
+  screens/quick_panel.cpp
   jobs/job_queue.cpp
-  render/renderer_sdl.cpp
-  render/image.cpp
-  render/text.cpp
   render/sound.cpp
   render/util.cpp
-  render/theme.cpp
 )
 
 if (FOYER_EVDEV AND LIBEVDEV_FOUND)
@@ -63,6 +48,7 @@ target_link_libraries(${EXECUTABLE_TITLE}
   PkgConfig::FMT
   PkgConfig::SPDLOG
   inih
+  Threads::Threads
 )
 if (FOYER_EVDEV AND LIBEVDEV_FOUND)
   target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBEVDEV)
@@ -70,3 +56,6 @@ endif ()
 if (FOYER_CEC)
   target_link_libraries(${EXECUTABLE_TITLE} PkgConfig::LIBCEC)
 endif ()
+
+install(TARGETS ${EXECUTABLE_TITLE} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/data/ DESTINATION ${CMAKE_INSTALL_DATADIR}/foyer)

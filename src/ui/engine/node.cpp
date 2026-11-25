@@ -82,6 +82,23 @@ namespace Foyer::ui {
         return children_.back().get();
     }
 
+    Node* Node::insert(size_t index, std::unique_ptr<Node> child)
+    {
+        child->parent_ = this;
+        index = std::min(index, children_.size());
+        Node *raw = child.get();
+        children_.insert(children_.begin() + (long) index, std::move(child));
+        invalidate_layout();
+        return raw;
+    }
+
+    size_t Node::index_of(const Node *c) const
+    {
+        for (size_t i = 0; i < children_.size(); i++)
+            if (children_[i].get() == c) return i;
+        return children_.size();
+    }
+
     void Node::clear_children()
     {
         children_.clear();

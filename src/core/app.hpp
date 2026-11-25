@@ -1,24 +1,18 @@
 #pragma once
 
-#include <string>
+#include <map>
 #include <memory>
+#include <string>
 
 #include <SDL3/SDL.h>
-
-#include <memory>
 #include <spdlog/spdlog.h>
 
-#include "config.hpp"
-#include "layout_model.hpp"
-#include "../render/renderer_sdl.hpp"
-#include "../render/theme.hpp"
-#include "../render/sound.hpp"
-#include "../ui/screen.hpp"
-#include "../ui/anim.hpp"
-#include "../ui/status_bar.hpp"
+#include "model.hpp"
 #include "../jobs/job_queue.hpp"
 #include "../platform/process.hpp"
 #include "../input/action.hpp"
+#include "../render/sound.hpp"
+#include "../ui/engine/engine.hpp"
 
 #ifdef FOYER_EVDEV
 #include "../input/evdev_global.hpp"
@@ -28,120 +22,112 @@
 #endif
 
 namespace Foyer {
-    // Initialize logging (file + console). Returns the default logger.
     std::shared_ptr<spdlog::logger> init_logging_global();
 
-    // Central application object. Owns all services, runs the main loop, maps
-    // input to actions and dispatches them to the top screen. No globals:
-    // screens receive App& and use it to access services.
+    struct Options {
+        std::string config_dir;          // -c dir (or legacy config.ini path -> its dir)
+        std::string legacy_layout;       // -l layout.xml (import source)
+        std::string legacy_config;       // config.ini (import source)
+        bool overlay = false;            // --overlay (quick panel over a running app)
+        bool windowed = false;           // --window
+        int width = 0, height = 0;       // --size WxH (window / offscreen)
+        std::string screenshot;          // --screenshot out.png: render, save, exit
+        std::string open;                // --open :settings (initial command)
+        std::string keys;                // --keys "right,down,accept" (screenshot scripting)
+        bool debug = false;
+    };
+
+    // Live system status shown in the top bar.
+    struct Status {
+        std::string net_kind;    // "ethernet" | "wifi" | "offline"
+        std::string net_text;
+        int volume = -1;
+        bool muted = false;
+        bool bt = false;
+    };
+
+    // Owns services, the window, and the UI engine. Screens are ui::Layers
+    // that get App& at construction.
     class App {
     public:
-        App(std::string config_path, std::string layout_path, bool overlay = false);
+        explicit App(const Options &o);
         ~App();
-        bool is_overlay() const { return overlay_; }
-
         int run();
 
-        // Services (for screens)
-        Renderer& renderer() { return *renderer_; }
-        Theme& theme() { return theme_; }
-        Config& config() { return config_; }
-        LayoutModel& layout() { return layout_; }
+        // services
+        ui::Engine& ui() { return *engine_; }
         JobQueue& jobs() { return *jobs_; }
-        Anim& anim() { return anim_; }
-        int screen_w() const { return screen_w_; }
-        int screen_h() const { return screen_h_; }
-        Sound* sound() { return sound_.get(); }
-        ScreenStack& screens() { return screens_; }
-        StatusBar& status_bar() { return status_bar_; }
+        const Options& options() const { return opt_; }
+        Settings& settings() { return settings_; }
+        Layout& layout() { return layout_; }
+        std::map<std::string, AppEntry>& apps() { return apps_; }
+        const Status& status() const { return status_; }
+        const std::string& theme_dir() const { return theme_dir_; }
+        bool is_overlay() const { return opt_.overlay; }
 
-        // Command execution (from tiles / hotkeys / quick menu)
-        void execute_command(const std::string &command, const std::string &title = "");
+        // persistence (write + apply)
+        void save_settings();
+        void save_layout();
+        void save_app(const AppEntry &a);
+        void reload_apps();
+        void apply_appearance();        // re-load theme tokens + metrics (live)
 
-        // Feedback
+        // actions
+        void execute(const std::string &command, const std::string &title = "");
+        void launch(const AppEntry &a);
+        void close_app();
+        bool app_running() const { return app_proc_.alive(); }
+        const std::string& running_title() const { return app_title_; }
+        void quit() { quit_ = true; }
+        void toast(const std::string &msg, bool error = false);
+        void open_settings(const std::string &page = "");
+        void open_quick_panel();
+        void refresh_status();
+
+        // helpers for screens
+        std::string resolve_art(const std::string &p) const;   // data-dir relative -> abs
+        std::string icon(const std::string &name) const;        // ui icon path
         void play_click();
         void play_select();
-        void show_toast(const std::string &msg);
 
-        // Persistence
-        void save_config() { config_.write(config_path_); }
-        void save_layout() { layout_.write(layout_path_); }
-        const std::string& config_path() const { return config_path_; }
-        const std::string& layout_path() const { return layout_path_; }
-
-        // App (launched application) lifecycle
-        bool app_running() const { return app_proc_.alive(); }
-        void close_app();            // SIGTERM the running app
-        void restart_ui();           // :quit — restart the launcher
-        void open_quick_menu();      // launch the overlay while an app runs
-
-        // Global (non-grabbing) input while an app is focused
-        void on_global_action(Action action);
-
-        // Rendering
-        void mark_dirty() { dirty_ = true; }
+        static uint32_t evt_global();   // SDL_RegisterEvents (evdev/CEC -> main thread)
 
     private:
-        void init_display();
-        void create_window();
-        void handle_event(SDL_Event &event);
-        void dispatch_action(Action action);
-        void handle_key(SDL_Event &event);
-        void handle_gamepad(SDL_Event &event);
-        void wake_screensaver();
-        void update_app_state();
-        void draw();
-        void build_home();
-        void refresh_status();
-        void schedule_status_refresh();
-
-        // Services
-        std::unique_ptr<RendererSDL> renderer_;
-        Theme theme_;
-        Config config_;
-        LayoutModel layout_;
-        std::string config_path_;
-        std::string layout_path_;
-        std::unique_ptr<JobQueue> jobs_;
-        std::unique_ptr<Sound> sound_;
-        ScreenStack screens_;
-        Anim anim_;
-        StatusBar status_bar_;
-        Process app_proc_;
-        Process overlay_proc_;
-        // Launched app bookkeeping (for failure diagnostics)
-        std::string app_title_;
-        std::string app_command_;
-        std::string app_log_;
-        Uint64 app_started_ = 0;
-        void report_app_exit(int code);
-        Uint64 last_status_refresh_ = 0;
+        Options opt_;
+        Settings settings_;
+        Layout layout_;
+        std::map<std::string, AppEntry> apps_;
+        std::string theme_dir_;
+        Status status_;
 
         SDL_Window *window_ = nullptr;
-        const SDL_DisplayMode *dm_ = nullptr;
-        int screen_w_ = 0, screen_h_ = 0;
-        bool letterbox_ = false;
+        SDL_Renderer *renderer_ = nullptr;
+        std::unique_ptr<ui::Engine> engine_;
+        std::unique_ptr<JobQueue> jobs_;
+        std::unique_ptr<Sound> sound_;
+        Process app_proc_;
+        Process overlay_proc_;
+        std::string app_title_, app_command_, app_log_;
+        Uint64 app_started_ = 0;
         bool quit_ = false;
-        bool dirty_ = true;
-        bool screensaver_active_ = false;
-        bool overlay_ = false;
-
-        Uint64 last_input_ = 0;
-        Uint64 last_clock_tick_ = 0;
-        std::string last_clock_string_;
-
-        // Toast
-        std::string toast_msg_;
-        Uint64 toast_until_ = 0;
-
-        // Global input
+        Uint64 last_input_ = 0, last_status_ = 0, last_frame_ = 0;
+        bool screensaver_ = false;
+        int frames_ = 0;
 #ifdef FOYER_EVDEV
         std::unique_ptr<EvdevGlobal> evdev_;
 #endif
 #ifdef FOYER_CEC
         std::unique_ptr<Cec> cec_;
 #endif
-
-        void apply_theme();
+        void init_video();
+        void load_data();
+        void build_root();
+        void handle(SDL_Event &e);
+        void dispatch(Action a);
+        void on_global(Action a);
+        void poll_app();
+        void report_exit(int code);
+        void update_metrics();
+        std::string legacy_import();
     };
 }

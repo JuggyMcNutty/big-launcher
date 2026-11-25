@@ -115,6 +115,8 @@ namespace Foyer::ui {
             return raw;
         }
         Node* adopt(std::unique_ptr<Node> child);
+        Node* insert(size_t index, std::unique_ptr<Node> child);
+        size_t index_of(const Node *child) const;
         void clear_children();
         void remove_child(Node *child);
         Node* parent() const { return parent_; }

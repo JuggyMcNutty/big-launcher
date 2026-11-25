@@ -56,7 +56,8 @@ namespace Foyer::ui {
             // Blurred backgrounds are decoded at reduced resolution (cheap + softer).
             float ds = bpx > 0.5f ? 0.25f : 1.f;
             int rw = std::max(8, (int) (w * ds)), rh = std::max(8, (int) (h * ds));
-            auto next = e.assets().request(path_, rw, rh, bpx * ds, fit == Fit::Cover);
+            auto next = e.assets().request(path_, rw, rh, bpx * ds, fit == Fit::Cover,
+                                           fit == Fit::Cover ? e.metrics().dp(radius) * ds : 0.f);
             if (!handle_ || !next->ready()) {
                 // keep showing the old texture until the new one is ready
                 if (!handle_) handle_ = next;
@@ -139,7 +140,8 @@ namespace Foyer::ui {
         const Tokens &t = engine_->tokens();
         float h = hl_.get();
         has_bg = true;
-        bg = mix(with_alpha(t.surface, has_bg_base_ ? t.surface.a : 0), t.accent, h);
+        SDL_Color base = base_hi ? t.surface_hi : t.surface;
+        bg = mix(with_alpha(base, has_bg_base_ ? base.a : 0), t.accent, h);
         if (!has_bg_base_) bg.a = (Uint8) (t.accent.a * h);
         shadow_blur = 22.f * h;
         shadow_y = 8.f * h;

@@ -196,6 +196,7 @@ namespace Foyer::ui {
             if (!alive || (*it)->enter.get() < 0.02f) it = dying_.erase(it);
             else { a = true; ++it; }
         }
+        if (overlay_active && overlay_active()) a = true;
         animating_ = a;
         return a;
     }
@@ -268,6 +269,7 @@ namespace Foyer::ui {
         };
         for (size_t i = first; i < layers_.size(); i++) draw_layer(*layers_[i]);
         for (auto &l : dying_) draw_layer(*l);
+        if (overlay_paint) overlay_paint(*this, canvas_);
         clear_invalid();
     }
 

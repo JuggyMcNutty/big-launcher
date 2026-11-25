@@ -154,13 +154,35 @@ namespace Foyer::ui {
     {
         if (!t) return;
         c = mod(c);
+        if (!c.a) return;
+        SDL_FRect d = map(dst);
+        if (d.w <= 0.f || d.h <= 0.f) return;
+        float cd = map_len(corner_dst);
+        cd = std::max(0.f, std::min({cd, d.w / 2, d.h / 2}));
+        float tw = 0, th = 0;
+        SDL_GetTextureSize(t, &tw, &th);
+        // Nine blits on whole-pixel rects: exact (no seams) on every
+        // renderer, including SDL's software rasteriser.
         SDL_SetTextureColorMod(t, c.r, c.g, c.b);
         SDL_SetTextureAlphaMod(t, c.a);
-        SDL_FRect d = map(dst);
-        float cd = map_len(corner_dst);
-        cd = std::min({cd, d.w / 2, d.h / 2});
-        float scale = corner_src > 0 ? cd / corner_src : 1.f;
-        SDL_RenderTexture9Grid(r_, t, nullptr, corner_src, corner_src, corner_src, corner_src, scale, &d);
+        auto rn = [](float v) { return std::round(v); };
+        float x0 = rn(d.x), x3 = rn(d.x + d.w), y0 = rn(d.y), y3 = rn(d.y + d.h);
+        float c2 = std::min(rn(cd), std::floor(std::min(x3 - x0, y3 - y0) / 2));
+        float xs[4] = {x0, x0 + c2, x3 - c2, x3};
+        float ys[4] = {y0, y0 + c2, y3 - c2, y3};
+        float us[4] = {0.f, corner_src, tw - corner_src, tw};
+        float vs[4] = {0.f, corner_src, th - corner_src, th};
+        for (int j = 0; j < 3; j++)
+            for (int i = 0; i < 3; i++) {
+                SDL_FRect dr{xs[i], ys[j], xs[i + 1] - xs[i], ys[j + 1] - ys[j]};
+                if (dr.w <= 0 || dr.h <= 0) continue;
+                SDL_FRect sr{us[i], vs[j], us[i + 1] - us[i], vs[j + 1] - vs[j]};
+                // stretch only the inner 1px of the centre strips (avoid
+                // sampling the curved corner pixels when scaling)
+                if (i == 1) { sr.x += sr.w / 2 - 0.5f; sr.w = 1.f; }
+                if (j == 1) { sr.y += sr.h / 2 - 0.5f; sr.h = 1.f; }
+                SDL_RenderTexture(r_, t, &sr, &dr);
+            }
     }
 
     // ---- primitives ------------------------------------------------------------

@@ -82,6 +82,10 @@ namespace Foyer::ui {
         // hooks
         std::function<void()> on_click;   // focus moved (sound)
         std::function<void()> on_select;  // activated (sound)
+        // Drawn above every layer (toasts, launch splash). Return true from
+        // overlay_active while animating.
+        std::function<void(Engine&, Canvas&)> overlay_paint;
+        std::function<bool()> overlay_active;
 
     private:
         SDL_Renderer *r_;
