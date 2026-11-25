@@ -4,6 +4,7 @@ add_executable(bl_tests
   ${PROJECT_SOURCE_DIR}/src/core/layout_model.cpp
   ${PROJECT_SOURCE_DIR}/src/input/action_mapper.cpp
   ${PROJECT_SOURCE_DIR}/src/platform/process.cpp
+  ${PROJECT_SOURCE_DIR}/src/platform/sysctl.cpp
   ${PROJECT_SOURCE_DIR}/src/render/util.cpp
 )
 target_include_directories(bl_tests PRIVATE ${PROJECT_BINARY_DIR})

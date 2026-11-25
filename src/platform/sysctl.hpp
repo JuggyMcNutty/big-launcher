@@ -10,3 +10,16 @@ namespace BL {
     std::string ctl(const std::string &group, const std::string &cmd,
                     const std::vector<std::string> &args = {});
 }
+
+namespace BL {
+    // Parsed `htpc-ctl net status` output.
+    struct NetIface {
+        std::string name, type, state, ip, mac, gateway, dns, speed;
+    };
+    struct NetStatus {
+        std::vector<NetIface> ifaces;
+        std::string eth;    // summary: ip or "no link"
+        std::string wifi;   // summary: ip, state or "no adapter"
+    };
+    NetStatus parse_net_status(const std::string &output);
+}

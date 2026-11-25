@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "../../ui/list_screen.hpp"
+#include "../../platform/sysctl.hpp"
 
 namespace BL {
     // Network page: per-interface details (from `htpc-ctl net status` iface
@@ -15,16 +16,13 @@ namespace BL {
     protected:
         void on_select(int index) override;
     private:
-        struct Iface {
-            std::string name, type, state, ip, mac, gateway, dns, speed;
-        };
         struct Network { std::string ssid, signal; };
 
         void refresh_status();
         void scan();
         void rebuild();
 
-        std::vector<Iface> ifaces_;
+        std::vector<NetIface> ifaces_;
         std::vector<Network> networks_;
         std::string wifi_state_ = "--";
         bool loaded_ = false;

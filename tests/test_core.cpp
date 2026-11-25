@@ -186,3 +186,34 @@ int main(int argc, char **argv)
     int res = context.run();
     return res;
 }
+
+// --- htpc-ctl net status parsing ---
+#include "../src/platform/sysctl.hpp"
+TEST_SUITE("NetStatus") {
+
+TEST_CASE("parses iface lines and summaries") {
+    std::string out =
+        "iface\teth0\tethernet\tup\t192.168.1.123/24\t98:fc:84:e2:0a:4f\t192.168.1.1\t192.168.1.1\t1000 Mb/s\n"
+        "iface\twlan0\twifi\tdown\t-\taa:bb:cc:dd:ee:ff\t-\t-\t-\n"
+        "eth=192.168.1.123\n"
+        "wifi=disconnected\n";
+    auto st = parse_net_status(out);
+    REQUIRE(st.ifaces.size() == 2);
+    CHECK(st.ifaces[0].name == "eth0");
+    CHECK(st.ifaces[0].type == "ethernet");
+    CHECK(st.ifaces[0].ip == "192.168.1.123/24");
+    CHECK(st.ifaces[0].gateway == "192.168.1.1");
+    CHECK(st.ifaces[0].speed == "1000 Mb/s");
+    CHECK(st.ifaces[1].type == "wifi");
+    CHECK(st.eth == "192.168.1.123");
+    CHECK(st.wifi == "disconnected");
+}
+
+TEST_CASE("tolerates malformed and legacy output") {
+    auto st = parse_net_status("eth=10.0.0.2\nwifi=no adapter\niface\tbroken\n");
+    CHECK(st.ifaces.empty());
+    CHECK(st.eth == "10.0.0.2");
+    CHECK(st.wifi == "no adapter");
+}
+
+}

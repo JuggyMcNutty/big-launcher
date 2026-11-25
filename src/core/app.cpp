@@ -515,13 +515,15 @@ void BL::App::refresh_status()
 {
     last_status_refresh_ = SDL_GetTicks();
     jobs_->run(ctl("net", "status"), [this](const JobResult &res) {
-        if (!res.ok) return;
+        NetStatus st = parse_net_status(res.output);
         std::string net;
-        for (const auto &line : split_lines(res.output)) {
-            if (line.starts_with("eth=")) net = "eth " + line.substr(4);
-            else if (line.starts_with("wifi=") && line.size() > 5 && line.substr(5) != "no adapter")
-                net = "wifi " + line.substr(5);
-        }
+        for (const auto &i : st.ifaces)
+            if (i.state == "up" && i.ip != "-") {
+                net = (i.type == "wifi" ? "WiFi " : "Ethernet ") + i.ip.substr(0, i.ip.find('/'));
+                break;
+            }
+        if (net.empty() && !st.eth.empty() && st.eth != "no link") net = "Ethernet " + st.eth;
+        if (net.empty()) net = "Offline";
         status_bar_.set_network(net);
         mark_dirty();
     });
