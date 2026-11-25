@@ -1,3 +1,6 @@
+#if defined(__GNUC__)
+#pragma GCC system_header
+#endif
 /*
  * Copyright (c) 2013-14 Mikko Mononen memon@inside.org
  *
