@@ -87,6 +87,7 @@ namespace Foyer {
             if (cmd == ":sleep") continue;
             std::string c = cmd, ti = title;
             std::string icon = c == ":shutdown" ? "power" : c == ":quit" ? "home" : "restart";
+            if (c == ":quit" && external_) continue;   // the overlay can't restart the launcher
             add(title, icon, [this, c, ti] {
                 if (c == ":quit") { app_.quit(); return; }
                 app_.ui().push(std::make_unique<ConfirmDialog>(app_, ti + "?", "", ti, "Cancel",
@@ -102,7 +103,7 @@ namespace Foyer {
         // Over a running app: transparent window, dim the app a little.
         float W = (float) e.metrics().width(), H = (float) e.metrics().height();
         c.clear({0, 0, 0, 0});
-        c.gradient({W * 0.4f, 0, W * 0.6f, H}, {0, 0, 0, 0}, {0, 0, 0, 0xA0}, false);
+        c.gradient({W * 0.35f, 0, W * 0.65f, H}, {0, 0, 0, 0}, {0, 0, 0, 0xB0}, false);
     }
 
     bool QuickPanel::on_action(Engine &e, Action a)
