@@ -51,9 +51,29 @@ namespace BL {
     }
 }
 
+namespace BL {
+    // init-spawned sessions get a minimal PATH without /usr/local/bin, where
+    // the htpc-* wrappers, htpc-ctl and locally built apps live. Without it
+    // every launch exits 127 and every htpc-ctl job fails.
+    static void ensure_path()
+    {
+        const char *cur = getenv("PATH");
+        std::string path = cur ? cur : "/usr/sbin:/usr/bin:/sbin:/bin";
+        std::string prefix;
+        for (const char *dir : {"/usr/local/sbin", "/usr/local/bin"}) {
+            std::string padded = ":" + path + ":";
+            if (padded.find(std::string(":") + dir + ":") == std::string::npos)
+                prefix += std::string(dir) + ":";
+        }
+        if (!prefix.empty())
+            setenv("PATH", (prefix + path).c_str(), 1);
+    }
+}
+
 BL::App::App(std::string config_path, std::string layout_path, bool overlay)
     : overlay_(overlay)
 {
+    ensure_path();
     set_executable_dir(SDL_GetBasePath());
     config_path_ = config_path;
     layout_path_ = layout_path;
