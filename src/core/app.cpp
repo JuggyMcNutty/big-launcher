@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 #include <filesystem>
 #include <csignal>
 
@@ -285,8 +286,17 @@ void App::build_root()
     std::error_code ec;
     if (fs::exists(fs::path(Paths::config_dir()) / "session.conf.pending", ec)) {
         int w = engine_->metrics().width(), h = engine_->metrics().height();
+        std::string out = "your TV's preferred mode";
+        // SDL sees gamescope's output size on its display
+        int n = 0;
+        if (SDL_DisplayID *ds = SDL_GetDisplays(&n)) {
+            if (n > 0) if (const SDL_DisplayMode *dm = SDL_GetCurrentDisplayMode(ds[0]))
+                out = std::to_string(dm->w) + " \xC3\x97 " + std::to_string(dm->h) +
+                      (dm->refresh_rate > 0 ? " @ " + std::to_string((int) std::lround(dm->refresh_rate)) + " Hz" : "");
+            SDL_free(ds);
+        }
         engine_->push(std::make_unique<ConfirmDialog>(*this, "Keep this resolution?",
-            "The display is now " + std::to_string(w) + " \xC3\x97 " + std::to_string(h) + ".",
+            "Output: " + out + ".  Interface rendered at " + std::to_string(w) + " \xC3\x97 " + std::to_string(h) + ".",
             "Keep", "Revert", [this](bool keep) {
                 jobs_->run(ctl("display", keep ? "mode/confirm" : "mode/revert"), nullptr);
                 if (keep) toast("Resolution saved");
