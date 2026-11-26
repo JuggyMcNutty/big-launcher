@@ -102,7 +102,6 @@ namespace Foyer {
         if (!external_) return;
         // Over a running app: transparent window, dim the app a little.
         float W = (float) e.metrics().width(), H = (float) e.metrics().height();
-        c.clear({0, 0, 0, 0});
         c.gradient({W * 0.35f, 0, W * 0.65f, H}, {0, 0, 0, 0}, {0, 0, 0, 0xB0}, false);
     }
 

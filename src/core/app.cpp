@@ -4,6 +4,7 @@
 #include <cmath>
 #include <filesystem>
 #include <csignal>
+#include <dlfcn.h>
 
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -83,6 +84,43 @@ namespace Foyer {
         }
         if (last.size() > 90) last = last.substr(0, 87) + "...";
         return last;
+    }
+}
+
+namespace Foyer {
+    // Mark our X11 window as a gamescope overlay *before* it is mapped.
+    // gamescope reads window properties, not environment variables:
+    //   STEAM_OVERLAY=1      composite above the focused app (alpha-blended),
+    //                        without stealing focus from it (no re-focus blank)
+    //   STEAM_INPUT_FOCUS=1  route keyboard/gamepad input to the overlay
+    // libX11 is loaded at runtime so Foyer has no build dependency on it.
+    static bool mark_gamescope_overlay(SDL_Window *w)
+    {
+        SDL_PropertiesID props = SDL_GetWindowProperties(w);
+        void *dpy = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
+        Sint64 win = SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+        if (!dpy || !win) {
+            Foyer::logger::warn("overlay: not an X11 window; gamescope overlay properties not set");
+            return false;
+        }
+        void *x11 = dlopen("libX11.so.6", RTLD_NOW | RTLD_LOCAL);
+        if (!x11) { Foyer::logger::warn("overlay: libX11 unavailable: {}", dlerror()); return false; }
+        using InternAtom = unsigned long (*)(void*, const char*, int);
+        using ChangeProperty = int (*)(void*, unsigned long, unsigned long, unsigned long, int, int, const unsigned char*, int);
+        using Flush = int (*)(void*);
+        auto intern = (InternAtom) dlsym(x11, "XInternAtom");
+        auto change = (ChangeProperty) dlsym(x11, "XChangeProperty");
+        auto flush = (Flush) dlsym(x11, "XFlush");
+        if (!intern || !change || !flush) return false;
+        const unsigned long XA_CARDINAL = 6;
+        const int PropModeReplace = 0;
+        unsigned long one = 1;   // format-32 data is passed as longs
+        for (const char *name : {"STEAM_OVERLAY", "STEAM_INPUT_FOCUS"}) {
+            unsigned long atom = intern(dpy, name, 0);
+            change(dpy, (unsigned long) win, atom, XA_CARDINAL, 32, PropModeReplace, (const unsigned char*) &one, 1);
+        }
+        flush(dpy);
+        return true;
     }
 }
 
@@ -170,6 +208,8 @@ void App::init_video()
     SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
     if (!opt_.screenshot.empty() && !getenv("SDL_VIDEO_DRIVER"))
         SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "offscreen,dummy");
+    if (opt_.overlay && !getenv("SDL_VIDEO_DRIVER"))
+        SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
     if (!SDL_Init(SDL_INIT_VIDEO))
         Foyer::logger::critical("Could not initialize SDL: {}", SDL_GetError());
     if (!TTF_Init())
@@ -190,18 +230,27 @@ void App::init_video()
         if (!opt_.screenshot.empty()) flags |= SDL_WINDOW_HIDDEN;
     }
     if (w <= 0 || h <= 0) { w = 1920; h = 1080; }
-    if (opt_.overlay) flags |= SDL_WINDOW_TRANSPARENT;
+    if (opt_.overlay) flags |= SDL_WINDOW_TRANSPARENT | SDL_WINDOW_HIDDEN;
     window_ = SDL_CreateWindow("Foyer", w, h, flags);
     if (!window_) Foyer::logger::critical("Could not create window: {}", SDL_GetError());
+
     renderer_ = SDL_CreateRenderer(window_, opt_.screenshot.empty() ? nullptr : "software");
     if (!renderer_) renderer_ = SDL_CreateRenderer(window_, nullptr);
     if (!renderer_) Foyer::logger::critical("Could not create renderer: {}", SDL_GetError());
+    if (opt_.overlay) {
+        // Set the overlay properties before the first map, then show. This
+        // must come after SDL_CreateRenderer: creating a GL renderer can
+        // recreate the X11 window, dropping properties set earlier.
+        if (mark_gamescope_overlay(window_)) Foyer::logger::info("overlay: marked as gamescope overlay");
+        SDL_ShowWindow(window_);
+    }
     SDL_SetRenderVSync(renderer_, 1);
     SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
     if (fullscreen) SDL_HideCursor();
     int pw = w, ph = h;
     SDL_GetRenderOutputSize(renderer_, &pw, &ph);
     engine_ = std::make_unique<ui::Engine>(renderer_, pw, ph);
+    engine_->transparent = opt_.overlay;
     Foyer::logger::info("Video: {} renderer, output {}x{}", SDL_GetRendererName(renderer_), pw, ph);
 }
 
@@ -364,7 +413,7 @@ void App::execute(const std::string &command, const std::string &title)
         else if (c == "home") { close_app(); engine_->pop_to_root(); }
         else if (c == "settings") open_settings(arg);
         else if (c == "audio" || c == "display" || c == "network" || c == "bluetooth" || c == "system" ||
-                 c == "power" || c == "appearance" || c == "layout" || c == "launcher")
+                 c == "stats" || c == "power" || c == "appearance" || c == "layout" || c == "launcher")
             open_settings(c);
         else if (c == "wifi") open_settings("network");
         else if (c == "bt") open_settings("bluetooth");
@@ -421,9 +470,10 @@ void App::open_quick_panel()
         return;
     }
     if (overlay_proc_.alive()) return;
-    // gamescope composites a window with GAMESCOPE_EXTERNAL_OVERLAY above the app.
+    // The overlay process tags its window STEAM_OVERLAY (see mark_gamescope_overlay)
+    // so gamescope composites it above the app without a focus switch.
     std::string exe = (fs::path(executable_dir()) / "foyer").string();
-    std::string cmd = "GAMESCOPE_EXTERNAL_OVERLAY=1 FOYER_APP_PID=" + std::to_string(app_proc_.pid()) +
+    std::string cmd = "FOYER_APP_PID=" + std::to_string(app_proc_.pid()) +
                       " FOYER_APP_TITLE='" + app_title_ + "' '" + exe + "' --overlay -c '" + Paths::config_dir() + "'";
     Foyer::logger::info("Opening quick panel overlay over '{}'", app_title_);
     overlay_proc_ = Process::spawn(cmd);

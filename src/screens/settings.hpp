@@ -30,18 +30,19 @@ namespace Foyer {
 
     class DisplayPage : public Page {
     public:
-        explicit DisplayPage(App &a): Page(a, "Display", "Resolution, scaling and TV safe area") {}
+        explicit DisplayPage(App &a): Page(a, "Display", "Resolution, panel info and scaling") {}
         void on_enter(ui::Engine &e) override;
     protected:
         void fill(ui::Engine &e, ui::Node &body) override;
     private:
         kit::RowButton *mode_ = nullptr, *render_ = nullptr, *scale_ = nullptr, *overscan_ = nullptr;
-        std::vector<std::string> modes_;   // "WxH" (first = preferred)
-        std::string preferred_, current_ = "", render_cur_ = "native";
-        std::string connector_;
+        ui::Node *panel_ = nullptr;   // "Panel" info rows (filled by refresh)
+        DisplayReport report_;
+        std::string current_ = "", render_cur_ = "native";
         void refresh();
         void pick_mode();
         void pick_render();
+        void fill_panel();
     };
 
     class NetworkPage : public Page {
@@ -81,6 +82,25 @@ namespace Foyer {
     private:
         ui::Node *info_ = nullptr;
         void refresh();
+    };
+
+    // Live system usage (CPU, memory, temperatures...), polled while open.
+    class StatsPage : public Page {
+    public:
+        explicit StatsPage(App &a): Page(a, "System stats", "Live CPU, memory and thermal usage") {}
+        void on_enter(ui::Engine &e) override;
+        bool tick(ui::Engine &e, float dt) override;
+    protected:
+        void fill(ui::Engine &e, ui::Node &body) override;
+    private:
+        ui::Text *cpu_ = nullptr, *load_ = nullptr, *procs_ = nullptr, *uptime_ = nullptr;
+        ui::Text *mem_ = nullptr, *swap_ = nullptr, *disk_ = nullptr;
+        ui::Node *cores_ = nullptr, *temps_ = nullptr, *net_ = nullptr;
+        ui::Text *gpu_ = nullptr;
+        float poll_ = 0;              // seconds since the last sample
+        bool sampled_ = false;
+        void refresh();
+        void show(const StatsSnapshot &s);
     };
 
     class PowerPage : public Page {

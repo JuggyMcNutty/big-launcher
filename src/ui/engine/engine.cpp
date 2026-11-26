@@ -247,7 +247,7 @@ namespace Foyer::ui {
     void Engine::paint()
     {
         layout();
-        canvas_.clear(tokens_.bg);
+        canvas_.clear(transparent ? SDL_Color{0, 0, 0, 0} : tokens_.bg);
         // find the lowest layer that must be drawn
         size_t first = 0;
         for (size_t i = layers_.size(); i-- > 0;)

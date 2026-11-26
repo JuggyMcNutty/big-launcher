@@ -15,8 +15,11 @@ Alpine (musl) / Debian (glibc) appliance image built from per-device profiles.
 
 - **v3** (current, `main`): a Big-Picture-style shell with top tabs, a focused-art hero and
   tile rows, an app library, and settings (appearance, layout, display, audio, network,
-  Bluetooth, launcher, system, power). It also has an on-screen keyboard and a quick panel
-  drawn over running apps (gamescope external overlay).
+  Bluetooth, launcher, system, stats, power). Display settings list every EDID mode as
+  res@Hz plus the panel info the monitor reports (native resolution, HDR, VRR, colour,
+  link clocks), and default the session to the panel's native resolution. A stats page
+  shows live CPU/GPU/memory/thermal usage. It also has an on-screen keyboard and a quick
+  panel drawn over running apps (gamescope external overlay).
 - **Engine**: a retained node tree with flex layout in **dp units** (480p → 4K, any aspect),
   critically damped springs, spatial D-pad focus with row memory, smooth scrollers, 9-slice
   rounded/shadow rendering and an async image cache with an LRU budget.

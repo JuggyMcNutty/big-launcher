@@ -78,6 +78,8 @@ namespace Foyer::ui {
         void paint();
         bool needs_paint() const;
         bool screenshot(const std::string &png_path);
+        // Clear to transparent instead of the theme background (overlay windows).
+        bool transparent = false;
 
         // hooks
         std::function<void()> on_click;   // focus moved (sound)

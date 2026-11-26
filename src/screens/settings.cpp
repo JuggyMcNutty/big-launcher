@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 
 #include <lconfig.h>
 #include "settings.hpp"
@@ -17,12 +18,13 @@ namespace Foyer {
         const Category kCategories[] = {
             {"appearance", "Appearance", "Theme, accent, wallpaper", "palette"},
             {"layout", "Layout", "Tabs, rows and tiles", "layout"},
-            {"display", "Display", "Resolution and scaling", "display"},
+            {"display", "Display", "Resolution and panel info", "display"},
             {"audio", "Audio", "Output and volume", "volume"},
             {"network", "Network", "Ethernet and WiFi", "network"},
             {"bluetooth", "Bluetooth", "Pair devices", "bluetooth"},
             {"launcher", "Launcher", "Sounds, clock, input", "sliders"},
             {"system", "System", "About this device", "info"},
+            {"stats", "Stats", "CPU, memory, temperatures", "stats"},
             {"power", "Power", "Sleep, restart, shut down", "power"},
         };
 
@@ -107,6 +109,7 @@ namespace Foyer {
         else if (id == "network") p = std::make_unique<NetworkPage>(app);
         else if (id == "bluetooth") p = std::make_unique<BluetoothPage>(app);
         else if (id == "system") p = std::make_unique<SystemPage>(app);
+        else if (id == "stats") p = std::make_unique<StatsPage>(app);
         else if (id == "power") p = std::make_unique<PowerPage>(app);
         else if (id == "appearance") p = std::make_unique<AppearancePage>(app);
         else if (id == "launcher") p = std::make_unique<LauncherPage>(app);
@@ -203,13 +206,31 @@ namespace Foyer {
     }
 
     // ---- Display -----------------------------------------------------------------
+    // "3840x2160@60" -> a friendly mode label ("3840x2160 × 60 Hz"), or "".
+    static std::string mode_label(const std::string &s)
+    {
+        if (s.empty()) return "";
+        auto x = s.find('x');
+        auto at = s.find('@');
+        if (x == std::string::npos) return s;
+        DisplayMode m;
+        m.w = atoi(s.c_str());
+        m.h = atoi(s.c_str() + x + 1);
+        m.rate = at == std::string::npos ? 60 : std::max(atoi(s.c_str() + at + 1), 1);
+        return display_mode_label(m);
+    }
+
     void DisplayPage::fill(Engine &e, Node &b)
     {
         kit::section(&b, "Output");
         mode_ = row("Resolution", "--", [this] { pick_mode(); }, "display",
-                    "Modes reported by your TV or monitor");
+                    "Every mode your TV or monitor reports (EDID)");
         render_ = row("Render resolution", "Native", [this] { pick_render(); }, "sliders",
                       "Render below output and upscale (faster on low-power boards)");
+        kit::section(&b, "Panel");
+        panel_ = b.add<Node>();
+        panel_->style.dir = Dir::Column;
+        kit::info_row(panel_, "Reading panel info\xE2\x80\xA6", "");
         kit::section(&b, "Interface");
         auto &s = app_.settings();
         scale_ = row("UI scale", std::to_string(s.ui_scale) + "%", nullptr, "layout", "Left / Right to adjust");
@@ -247,41 +268,79 @@ namespace Foyer {
             current_ = lines.empty() ? "auto" : lines[0];
             render_cur_ = kv(r.output, "render");
             if (render_cur_.empty()) render_cur_ = "native";
-            mode_->set_value(current_ == "auto" ? "Automatic" : current_);
+            std::string label;
+            if (current_ == "native") label = "Native" + (report_.native.empty() ? "" : ": " + mode_label(report_.native));
+            else if (current_ == "auto") label = "Automatic" + (report_.preferred.empty() ? "" : ": " + mode_label(report_.preferred));
+            else label = mode_label(current_);
+            mode_->set_value(label.empty() ? "--" : label);
             render_->set_value(render_cur_ == "native" ? "Native" : render_cur_);
         });
         app_.jobs().run(ctl("display", "modes"), [this](const JobResult &r) {
-            modes_.clear();
-            preferred_.clear();
-            for (auto &line : split_lines(r.output)) {
-                auto f = tabs(line);
-                if (f[0] == "connector" && f.size() >= 3 && f[2] == "connected") connector_ = f[1];
-                if (f[0] == "mode" && f.size() >= 2) {
-                    modes_.push_back(f[1]);
-                    if (f.size() >= 3 && f[2] == "preferred") preferred_ = f[1];
+            report_ = parse_display_report(r.output);
+            std::string sub;
+            if (!report_.connector.empty()) {
+                sub = "Connected: " + report_.connector;
+                if (!report_.connector_type.empty()) sub += " (" + report_.connector_type + ")";
+                if (!report_.panel.count("name")) {
+                    if (!report_.native.empty()) sub += " \xC2\xB7 native " + report_.native;
+                } else {
+                    sub += " \xC2\xB7 " + report_.panel.at("name");
                 }
             }
-            if (!connector_.empty() && mode_->sub) mode_->sub->set("Connected: " + connector_ +
-                                                                    (preferred_.empty() ? "" : "  \xE2\x80\xA2  preferred " + preferred_));
+            if (mode_->sub) mode_->sub->set(sub.empty() ? "Every mode your TV or monitor reports (EDID)" : sub);
+            fill_panel();
         });
+    }
+
+    void DisplayPage::fill_panel()
+    {
+        panel_->clear_children();
+        const auto &p = report_.panel;
+        auto add = [this](const char *k, const std::string &v) {
+            if (!v.empty()) kit::info_row(panel_, k, v);
+        };
+        std::string name = p.count("name") ? p.at("name") : "";
+        std::string make = p.count("make") ? p.at("make") : "";
+        add("Display", name + (make.empty() || name.empty() ? "" : "  (" + make + ")"));
+        add("Size", p.count("size") ? p.at("size") : "");
+        add("Native resolution", mode_label(report_.native));
+        add("Preferred mode", mode_label(report_.preferred));
+        std::string hdr = p.count("hdr") ? p.at("hdr") : "";
+        if (hdr == "none" || hdr.empty()) add("HDR", "Not reported");
+        else add("HDR", hdr + (p.count("hdr_max") ? "  \xC2\xB7 peak " + p.at("hdr_max") : ""));
+        add("Variable refresh", p.count("vrr") ? p.at("vrr") : "");
+        add("Colour gamut", p.count("colorimetry") ? p.at("colorimetry") : "");
+        add("Deep colour", p.count("deepcolor") ? p.at("deepcolor") : "");
+        add("Audio", p.count("audio") ? p.at("audio") : "");
+        std::string link;
+        if (p.count("char_rate")) link = p.at("char_rate") + (p.count("scdc") ? "  (SCDC)" : "");
+        else if (p.count("tmds")) link = p.at("tmds");
+        add("Max link clock", link);
+        invalidate_layout();
     }
 
     void DisplayPage::pick_mode()
     {
-        if (modes_.empty()) { app_.toast("No display modes reported (is a TV connected?)", true); return; }
-        std::vector<std::string> opts{"Automatic (monitor preferred" + (preferred_.empty() ? std::string(")") : ": " + preferred_ + ")")};
-        std::vector<std::string> vals{"auto"};
-        int sel = current_ == "auto" ? 0 : -1;
-        for (auto &m : modes_) {
-            for (int hz : {60, 50, 30}) {
-                if (hz != 60 && m.find("2160") == std::string::npos && hz == 30) continue;
-                std::string v = m + "@" + std::to_string(hz);
-                opts.push_back(m + "  " + std::to_string(hz) + " Hz" + (m == preferred_ && hz == 60 ? "  (preferred)" : ""));
-                vals.push_back(v);
-                if (v == current_) sel = (int) vals.size() - 1;
-            }
+        const auto &rep = report_;
+        if (rep.modes.empty()) { app_.toast("No display modes reported (is a TV connected?)", true); return; }
+        std::vector<std::string> opts, vals;
+        if (!rep.native.empty()) {
+            opts.push_back("Native \xE2\x80\x94 the panel's own resolution (" + mode_label(rep.native) + ")");
+            vals.push_back("native");
         }
-        app_.ui().push(std::make_unique<ChoiceSheet>(app_, "Resolution", opts, std::max(0, sel), [this, vals](int i) {
+        opts.push_back("Automatic \xE2\x80\x94 the monitor's preferred mode" +
+                       (rep.preferred.empty() ? "" : " (" + mode_label(rep.preferred) + ")"));
+        vals.push_back("auto");
+        int sel = current_ == "native" ? 0 : -1;
+        if (sel < 0 && current_ == "auto") sel = !rep.native.empty();
+        for (auto &m : rep.modes) {
+            std::string v = std::to_string(m.w) + "x" + std::to_string(m.h) + "@" + std::to_string(m.rate);
+            std::string tag = m.native ? "  \xC2\xB7 native" : m.preferred ? "  \xC2\xB7 preferred" : "";
+            opts.push_back(display_mode_label(m) + tag);
+            vals.push_back(v);
+            if (v == current_) sel = (int) vals.size() - 1;
+        }
+        app_.ui().push(std::make_unique<ChoiceSheet>(app_, "Resolution", opts, std::max(sel, 0), [this, vals](int i) {
             std::string v = vals[i];
             if (v == current_) return;
             app_.jobs().run(ctl("display", "mode/set", {v}), [this](const JobResult &res) {
@@ -468,6 +527,101 @@ namespace Foyer {
             for (auto &[k, label] : keys) kit::info_row(info_, label, kv(r.output, k));
             invalidate_layout();
         });
+    }
+
+    // ---- Stats -------------------------------------------------------------------
+    template <typename... A>
+    static std::string sfmt(const char *fmt, A... args)
+    {
+        char buf[128];
+        int n = snprintf(buf, sizeof buf, fmt, args...);
+        return std::string(buf, n < 0 ? 0 : std::min<size_t>((size_t) n, sizeof buf - 1));
+    }
+
+    void StatsPage::fill(Engine &e, Node &b)
+    {
+        (void) e;
+        kit::section(&b, "Processor");
+        kit::info_row(&b, "CPU", "Sampling\xE2\x80\xA6", &cpu_);
+        cores_ = b.add<Node>();
+        cores_->style.dir = Dir::Column;
+        kit::info_row(&b, "Load (1/5/15 min)", "--", &load_);
+        kit::info_row(&b, "Processes", "--", &procs_);
+        kit::info_row(&b, "Uptime", "--", &uptime_);
+        kit::section(&b, "Memory");
+        kit::info_row(&b, "RAM", "--", &mem_);
+        kit::info_row(&b, "Swap", "--", &swap_);
+        kit::info_row(&b, "Storage", "--", &disk_);
+        kit::section(&b, "Graphics");
+        kit::info_row(&b, "GPU", "--", &gpu_);
+        kit::section(&b, "Temperature");
+        temps_ = b.add<Node>();
+        temps_->style.dir = Dir::Column;
+        kit::section(&b, "Network");
+        net_ = b.add<Node>();
+        net_->style.dir = Dir::Column;
+    }
+
+    void StatsPage::on_enter(Engine &e) { (void) e; poll_ = 0; refresh(); }
+
+    bool StatsPage::tick(Engine &e, float dt)
+    {
+        if (e.top() != this) { poll_ = 0; return false; }   // only poll while on top
+        poll_ += dt;
+        if (poll_ >= 2.f) {
+            poll_ = 0;
+            if (!app_.jobs().busy()) refresh();
+            else poll_ = 1.9f;   // wait for the queue; retry soon
+            return true;
+        }
+        return false;
+    }
+
+    void StatsPage::refresh()
+    {
+        app_.jobs().run(ctl("sys", "stats"), [this](const JobResult &r) {
+            if (!r.ok) return;
+            show(parse_sys_stats(r.output));
+        });
+    }
+
+    void StatsPage::show(const StatsSnapshot &s)
+    {
+        if (cpu_) cpu_->set(sfmt("%d%%", s.cpu_busy));
+        cores_->clear_children();
+        for (auto &c : s.cores)
+            kit::info_row(cores_, "Core " + std::to_string(c.index + 1), sfmt("%d%%", c.busy));
+        if (load_) load_->set(sfmt("%.2f / %.2f / %.2f", s.load1, s.load5, s.load15));
+        if (procs_) procs_->set(std::to_string(s.procs) + "  (" + std::to_string(s.procs_running) + " running)");
+        if (uptime_) uptime_->set(fmt_uptime(s.uptime_s));
+        if (mem_) {
+            long long used = std::max(s.mem_total_kb - s.mem_avail_kb, 0LL);
+            mem_->set(fmt_kb(used) + " used of " + fmt_kb(s.mem_total_kb));
+        }
+        if (swap_) swap_->set(s.swap_total_kb > 0 ? fmt_kb(s.swap_used_kb) + " of " + fmt_kb(s.swap_total_kb)
+                                                  : "none");
+        if (disk_) disk_->set(fmt_kb(s.disk_used_kb) + " of " + fmt_kb(s.disk_total_kb));
+        if (gpu_) {
+            std::string g;
+            if (!s.gpu_busy.empty()) g = s.gpu_busy + "%";
+            if (!s.gpu_freq.empty()) g += (g.empty() ? "" : "  \xC2\xB7  ") + s.gpu_freq + " MHz";
+            gpu_->set(g.empty() ? "n/a" : g);
+        }
+        temps_->clear_children();
+        int ntemp = 0;
+        for (auto &[name, mc] : s.temps) {
+            kit::info_row(temps_, name, fmt_temp(mc));
+            ntemp++;
+        }
+        if (!ntemp) kit::info_row(temps_, "Sensors", "none");
+        net_->clear_children();
+        int nnet = 0;
+        for (auto &i : s.net) {
+            kit::info_row(net_, i.name, fmt_bps(i.rx) + "  \xC2\xB7  " + fmt_bps(i.tx) + " up");
+            nnet++;
+        }
+        if (!nnet) kit::info_row(net_, "Interfaces", "none");
+        invalidate_layout();
     }
 
     // ---- Power -------------------------------------------------------------------

@@ -216,6 +216,125 @@ TEST_CASE("tolerates malformed and legacy output") {
     CHECK(st.wifi == "no adapter");
 }
 
+// --- display report parsing ---
+#include "../src/platform/sysctl.hpp"
+TEST_SUITE("DisplayReport") {
+
+TEST_CASE("parses connectors, modes and panel info") {
+    std::string out =
+        "connector\tDP-2\tdisconnected\tDisplayPort\n"
+        "connector\tDP-1\tconnected\tDisplayPort\n"
+        "make=AOC\n"
+        "name=Q32G3WG3R3\n"
+        "native=3840x2160@60\n"
+        "preferred=2560x1440@60\n"
+        "hdr=HDR10 (ST.2084)\n"
+        "hdr_max=302 cd/m2\n"
+        "mode\t3840x2160\t50\t\n"
+        "mode\t3840x2160\t60\tnative\n"
+        "mode\t1920x1080\t60\tpreferred\n";
+    auto r = parse_display_report(out);
+    CHECK(r.connector == "DP-1");
+    CHECK(r.connector_state == "connected");
+    CHECK(r.connector_type == "DisplayPort");
+    CHECK(r.native == "3840x2160@60");
+    CHECK(r.preferred == "2560x1440@60");
+    CHECK(r.panel.at("make") == "AOC");
+    CHECK(r.panel.at("hdr") == "HDR10 (ST.2084)");
+    REQUIRE(r.modes.size() == 3);
+    CHECK(r.modes[0].w == 3840);
+    CHECK(r.modes[0].h == 2160);
+    CHECK(r.modes[0].rate == 60);
+    CHECK(r.modes[0].native);
+    CHECK_FALSE(r.modes[0].preferred);
+    CHECK(r.modes[1].rate == 50);
+    CHECK(r.modes[2].w == 1920);
+    CHECK(r.modes[2].preferred);
+    CHECK(display_mode_label(r.modes[0]) == "3840x2160 \xC3\x97 60 Hz");
+}
+
+TEST_CASE("empty or malformed output") {
+    auto r = parse_display_report("");
+    CHECK(r.modes.empty());
+    CHECK(r.native.empty());
+    auto r2 = parse_display_report("mode\tbroken\nmode\t640x480\t60\tpreferred\n");
+    REQUIRE(r2.modes.size() == 1);
+    CHECK(r2.modes[0].w == 640);
+    CHECK(r2.modes[0].h == 480);
+    CHECK(r2.modes[0].preferred);
+}
+
+}
+
+// --- sys stats parsing ---
+TEST_SUITE("SysStats") {
+
+TEST_CASE("parses a snapshot") {
+    std::string out =
+        "cpu\t12\n"
+        "core\t0\t10\n"
+        "core\t1\t14\n"
+        "mem\t1919376\t1135488\n"
+        "swap\t524284\t102400\n"
+        "load\t0.34\t0.43\t0.39\n"
+        "proc\t212\t3\n"
+        "up\t254432.5\n"
+        "temp\tx86_pkg_temp\t45300\n"
+        "gpu\t78\t1200\n"
+        "net\teno1\t125\t2048\n"
+        "disk\t11800000\t29000000\n";
+    auto s = parse_sys_stats(out);
+    CHECK(s.cpu_busy == 12);
+    REQUIRE(s.cores.size() == 2);
+    CHECK(s.cores[0].index == 0);
+    CHECK(s.cores[0].busy == 10);
+    CHECK(s.cores[1].index == 1);
+    CHECK(s.cores[1].busy == 14);
+    CHECK(s.mem_total_kb == 1919376);
+    CHECK(s.mem_avail_kb == 1135488);
+    CHECK(s.swap_total_kb == 524284);
+    CHECK(s.swap_used_kb == 102400);
+    CHECK(s.load1 == 0.34);
+    CHECK(s.load15 == 0.39);
+    CHECK(s.procs == 212);
+    CHECK(s.procs_running == 3);
+    CHECK(s.uptime_s == 254432.5);
+    REQUIRE(s.temps.size() == 1);
+    CHECK(s.temps[0].first == "x86_pkg_temp");
+    CHECK(s.temps[0].second == 45300);
+    CHECK(s.gpu_busy == "78");
+    CHECK(s.gpu_freq == "1200");
+    REQUIRE(s.net.size() == 1);
+    CHECK(s.net[0].name == "eno1");
+    CHECK(s.net[0].rx == 125);
+    CHECK(s.net[0].tx == 2048);
+    CHECK(s.disk_used_kb == 11800000);
+    CHECK(s.disk_total_kb == 29000000);
+    CHECK(fmt_temp(45300) == "45\xC2\xB0" "C");
+    CHECK(fmt_temp(45999) == "46\xC2\xB0" "C");
+    CHECK(fmt_kb(2048) == "2 kB");
+    CHECK(fmt_kb(1024 * 1024) == "1.0 MB");
+    CHECK(fmt_kb(2 * 1024LL * 1024 * 1024) == "2.0 GB");
+    CHECK(fmt_bps(1024) == "1 kB/s");
+    CHECK(fmt_bps(1.5 * 1024 * 1024) == "1.5 MB/s");
+    CHECK(fmt_uptime(59) == "59 s");
+    CHECK(fmt_uptime(300) == "5 min");
+    CHECK(fmt_uptime(86400 + 2 * 3600 + 17 * 60) == "1 day, 2:17");
+    CHECK(fmt_uptime(3 * 86400 + 5 * 60) == "3 days, 0:05");
+}
+
+TEST_CASE("missing gpu fields and empty snapshot") {
+    auto s = parse_sys_stats("gpu\t-\t-\ncpu\t100\n");
+    CHECK(s.gpu_busy.empty());
+    CHECK(s.gpu_freq.empty());
+    CHECK(s.cpu_busy == 100);
+    auto e = parse_sys_stats("");
+    CHECK(e.cpu_busy == 0);
+    CHECK(e.cores.empty());
+    CHECK(e.net.empty());
+}
+
+}
 }
 
 // --- dp units / breakpoints ---
