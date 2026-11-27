@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <csignal>
 #include <cstdlib>
 
@@ -52,6 +53,9 @@ namespace Foyer {
         k->dim = true;
         auto *n = head->add<Text>(running.empty() ? "Foyer" : running, TextRole::Xl);
         n->display_font = true;
+        stats_line_ = panel->add<Text>("", TextRole::Sm);
+        stats_line_->dim = true;
+        stats_line_->style.pad = Edges{8, 0, 8, 10};
 
         auto *list = kit::list(panel, 10000);
         auto add = [&](const std::string &label, const std::string &icon, std::function<void()> f, const std::string &val = "") {
@@ -112,7 +116,38 @@ namespace Foyer {
         return false;
     }
 
-    void QuickPanel::on_enter(Engine &e) { (void) e; refresh_volume(); }
+    void QuickPanel::on_enter(Engine &e) { (void) e; refresh_volume(); refresh_stats(); }
+
+    bool QuickPanel::tick(Engine &e, float dt)
+    {
+        if (e.top() != this) { poll_ = 0; return false; }   // only poll while on top
+        poll_ += dt;
+        if (poll_ >= 2.f) {
+            poll_ = 0;
+            if (!app_.jobs().busy()) refresh_stats();
+            else poll_ = 1.9f;   // wait for the queue; retry soon
+            return true;
+        }
+        return false;
+    }
+
+    void QuickPanel::refresh_stats()
+    {
+        app_.jobs().run(ctl("sys", "stats"), [this](const JobResult &r) {
+            if (!r.ok || !stats_line_) return;
+            StatsSnapshot s = parse_sys_stats(r.output);
+            std::string line = "CPU " + std::to_string(s.cpu_busy) + "%";
+            long long used = std::max(s.mem_total_kb - s.mem_avail_kb, 0LL);
+            if (s.mem_total_kb > 0) line += "  \xC2\xB7  RAM " + fmt_kb(used) + "/" + fmt_kb(s.mem_total_kb);
+            int temp = 0;
+            for (auto &[name, mc] : s.temps) temp = std::max(temp, mc);
+            if (temp > 0) line += "  \xC2\xB7  " + fmt_temp(temp);
+            double net = 0;
+            for (auto &i : s.net) net += i.rx + i.tx;
+            if (net > 0) line += "  \xC2\xB7  " + fmt_bps(net);
+            stats_line_->set(line);
+        });
+    }
 
     void QuickPanel::refresh_volume()
     {

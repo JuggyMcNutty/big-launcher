@@ -282,9 +282,11 @@ TEST_CASE("parses a snapshot") {
         "proc\t212\t3\n"
         "up\t254432.5\n"
         "temp\tx86_pkg_temp\t45300\n"
-        "gpu\t78\t1200\n"
+        "gpu\t78\t1200\t300\t1500\n"
         "net\teno1\t125\t2048\n"
-        "disk\t11800000\t29000000\n";
+        "dio\t4096\t128\n"
+        "disk\t/\t11800000\t29000000\n"
+        "disk\t/boot\t53211\t258095\n";
     auto s = parse_sys_stats(out);
     CHECK(s.cpu_busy == 12);
     REQUIRE(s.cores.size() == 2);
@@ -306,12 +308,19 @@ TEST_CASE("parses a snapshot") {
     CHECK(s.temps[0].second == 45300);
     CHECK(s.gpu_busy == "78");
     CHECK(s.gpu_freq == "1200");
+    CHECK(s.gpu_freq_min == 300);
+    CHECK(s.gpu_freq_max == 1500);
     REQUIRE(s.net.size() == 1);
     CHECK(s.net[0].name == "eno1");
     CHECK(s.net[0].rx == 125);
     CHECK(s.net[0].tx == 2048);
-    CHECK(s.disk_used_kb == 11800000);
-    CHECK(s.disk_total_kb == 29000000);
+    CHECK(s.disk_read_kbs == 4096);
+    CHECK(s.disk_write_kbs == 128);
+    REQUIRE(s.mounts.size() == 2);
+    CHECK(s.mounts[0].mount == "/");
+    CHECK(s.mounts[0].used_kb == 11800000);
+    CHECK(s.mounts[0].total_kb == 29000000);
+    CHECK(s.mounts[1].mount == "/boot");
     CHECK(fmt_temp(45300) == "45\xC2\xB0" "C");
     CHECK(fmt_temp(45999) == "46\xC2\xB0" "C");
     CHECK(fmt_kb(2048) == "2 kB");
@@ -329,11 +338,36 @@ TEST_CASE("missing gpu fields and empty snapshot") {
     auto s = parse_sys_stats("gpu\t-\t-\ncpu\t100\n");
     CHECK(s.gpu_busy.empty());
     CHECK(s.gpu_freq.empty());
+    CHECK(s.gpu_freq_min == 0);
+    CHECK(s.gpu_freq_max == 0);
     CHECK(s.cpu_busy == 100);
+    // old 3-field gpu line and old 2-field disk line still parse
+    auto old = parse_sys_stats("gpu\t-\t717\ndisk\t4118772\t114996512\n");
+    CHECK(old.gpu_freq == "717");
+    CHECK(old.gpu_freq_min == 0);
+    REQUIRE(old.mounts.size() == 1);
+    CHECK(old.mounts[0].mount == "/");
+    CHECK(old.mounts[0].used_kb == 4118772);
     auto e = parse_sys_stats("");
     CHECK(e.cpu_busy == 0);
     CHECK(e.cores.empty());
     CHECK(e.net.empty());
+}
+
+TEST_CASE("parses a process list") {
+    std::string out =
+        "proc\t1630306\t7.6\t720716\tfirefox-bin\n"
+        "proc\t1586014\t5.7\t94396\ttermius-app\n"
+        "proc\t11\t0.0\t0\tkworker/0:0H-events_highpri\n"
+        "garbage line\n";
+    auto p = parse_sys_procs(out);
+    REQUIRE(p.size() == 3);
+    CHECK(p[0].pid == 1630306);
+    CHECK(p[0].cpu == 7.6);
+    CHECK(p[0].mem_kb == 720716);
+    CHECK(p[0].name == "firefox-bin");
+    CHECK(p[2].name == "kworker/0:0H-events_highpri");
+    CHECK(parse_sys_procs("").empty());
 }
 
 }

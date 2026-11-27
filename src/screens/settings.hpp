@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <map>
 #include <string>
 
@@ -95,13 +96,16 @@ namespace Foyer {
         void fill(ui::Engine &e, ui::Node &body) override;
     private:
         ui::Text *cpu_ = nullptr, *load_ = nullptr, *procs_ = nullptr, *uptime_ = nullptr;
-        ui::Text *mem_ = nullptr, *swap_ = nullptr, *disk_ = nullptr;
-        ui::Node *cores_ = nullptr, *temps_ = nullptr, *net_ = nullptr;
-        ui::Text *gpu_ = nullptr;
+        ui::Text *mem_ = nullptr, *swap_ = nullptr, *dio_ = nullptr;
+        ui::Node *cores_ = nullptr, *mounts_ = nullptr, *temps_ = nullptr, *net_ = nullptr;
+        ui::Node *procs_list_ = nullptr;
+        ui::Text *gpu_ = nullptr, *net_total_ = nullptr;
+        ui::Graph *cpu_g_ = nullptr, *mem_g_ = nullptr, *net_g_ = nullptr;
         float poll_ = 0;              // seconds since the last sample
-        bool sampled_ = false;
+        std::deque<double> net_hist_;   // raw rx+tx for adaptive graph scaling
         void refresh();
         void show(const StatsSnapshot &s);
+        void show_procs(const std::vector<ProcStat> &p);
     };
 
     class PowerPage : public Page {

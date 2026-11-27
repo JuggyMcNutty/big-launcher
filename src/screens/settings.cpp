@@ -546,6 +546,7 @@ namespace Foyer {
         (void) e;
         kit::section(&b, "Processor");
         kit::info_row(&b, "CPU", "Sampling\xE2\x80\xA6", &cpu_);
+        cpu_g_ = b.add<ui::Graph>();
         cores_ = b.add<Node>();
         cores_->style.dir = Dir::Column;
         kit::info_row(&b, "Load (1/5/15 min)", "--", &load_);
@@ -553,14 +554,24 @@ namespace Foyer {
         kit::info_row(&b, "Uptime", "--", &uptime_);
         kit::section(&b, "Memory");
         kit::info_row(&b, "RAM", "--", &mem_);
+        mem_g_ = b.add<ui::Graph>();
         kit::info_row(&b, "Swap", "--", &swap_);
-        kit::info_row(&b, "Storage", "--", &disk_);
+        mounts_ = b.add<Node>();
+        mounts_->style.dir = Dir::Column;
+        kit::info_row(mounts_, "Storage", "--");
+        kit::info_row(&b, "Disk I/O", "--", &dio_);
+        kit::section(&b, "Top processes");
+        procs_list_ = b.add<Node>();
+        procs_list_->style.dir = Dir::Column;
+        kit::info_row(procs_list_, "Sampling\xE2\x80\xA6", "");
         kit::section(&b, "Graphics");
         kit::info_row(&b, "GPU", "--", &gpu_);
         kit::section(&b, "Temperature");
         temps_ = b.add<Node>();
         temps_->style.dir = Dir::Column;
         kit::section(&b, "Network");
+        kit::info_row(&b, "Total", "--", &net_total_);
+        net_g_ = b.add<ui::Graph>();
         net_ = b.add<Node>();
         net_->style.dir = Dir::Column;
     }
@@ -586,11 +597,16 @@ namespace Foyer {
             if (!r.ok) return;
             show(parse_sys_stats(r.output));
         });
+        app_.jobs().run(ctl("sys", "procs", {"10"}), [this](const JobResult &r) {
+            if (!r.ok) return;
+            show_procs(parse_sys_procs(r.output));
+        });
     }
 
     void StatsPage::show(const StatsSnapshot &s)
     {
         if (cpu_) cpu_->set(sfmt("%d%%", s.cpu_busy));
+        if (cpu_g_) cpu_g_->push(s.cpu_busy / 100.f);
         cores_->clear_children();
         for (auto &c : s.cores)
             kit::info_row(cores_, "Core " + std::to_string(c.index + 1), sfmt("%d%%", c.busy));
@@ -601,13 +617,24 @@ namespace Foyer {
             long long used = std::max(s.mem_total_kb - s.mem_avail_kb, 0LL);
             mem_->set(fmt_kb(used) + " used of " + fmt_kb(s.mem_total_kb));
         }
+        if (mem_g_ && s.mem_total_kb > 0)
+            mem_g_->push((double) std::max(s.mem_total_kb - s.mem_avail_kb, 0LL) / s.mem_total_kb);
         if (swap_) swap_->set(s.swap_total_kb > 0 ? fmt_kb(s.swap_used_kb) + " of " + fmt_kb(s.swap_total_kb)
                                                   : "none");
-        if (disk_) disk_->set(fmt_kb(s.disk_used_kb) + " of " + fmt_kb(s.disk_total_kb));
+        mounts_->clear_children();
+        if (s.mounts.empty()) kit::info_row(mounts_, "Storage", "n/a");
+        for (auto &m : s.mounts)
+            kit::info_row(mounts_, m.mount == "/" ? "Storage" : m.mount,
+                          fmt_kb(m.used_kb) + " of " + fmt_kb(m.total_kb));
+        if (dio_) dio_->set(s.disk_read_kbs > 0 || s.disk_write_kbs > 0
+            ? fmt_bps(s.disk_read_kbs * 1024) + " down  \xC2\xB7  " + fmt_bps(s.disk_write_kbs * 1024) + " up"
+            : "idle");
         if (gpu_) {
             std::string g;
             if (!s.gpu_busy.empty()) g = s.gpu_busy + "%";
             if (!s.gpu_freq.empty()) g += (g.empty() ? "" : "  \xC2\xB7  ") + s.gpu_freq + " MHz";
+            if (s.gpu_freq_min > 0 && s.gpu_freq_max > 0)
+                g += (g.empty() ? "" : "  ") + sfmt("(%d\xE2\x80\x93%d)", s.gpu_freq_min, s.gpu_freq_max);
             gpu_->set(g.empty() ? "n/a" : g);
         }
         temps_->clear_children();
@@ -617,6 +644,16 @@ namespace Foyer {
             ntemp++;
         }
         if (!ntemp) kit::info_row(temps_, "Sensors", "none");
+        double net_total = 0;
+        for (auto &i : s.net) net_total += i.rx + i.tx;
+        if (net_total_) net_total_->set(fmt_bps(net_total));
+        if (net_g_) {
+            net_hist_.push_back(net_total);
+            if ((int) net_hist_.size() > ui::Graph::kSlots) net_hist_.pop_front();
+            double scale = 1024 * 1024;   // 1 MB/s floor
+            for (double v : net_hist_) scale = std::max(scale, v);
+            net_g_->push((float) (net_total / scale));
+        }
         net_->clear_children();
         int nnet = 0;
         for (auto &i : s.net) {
@@ -624,6 +661,30 @@ namespace Foyer {
             nnet++;
         }
         if (!nnet) kit::info_row(net_, "Interfaces", "none");
+        invalidate_layout();
+    }
+
+    void StatsPage::show_procs(const std::vector<ProcStat> &p)
+    {
+        procs_list_->clear_children();
+        int n = 0;
+        for (auto &q : p) {
+            auto *b = procs_list_->add<kit::RowButton>(app_,
+                q.name + " (" + std::to_string(q.pid) + ")",
+                sfmt("%.1f%%  \xC2\xB7  %s", q.cpu, fmt_kb(q.mem_kb).c_str()), "app");
+            b->on_activate = [this, name = q.name, pid = q.pid] {
+                app_.ui().push(std::make_unique<ConfirmDialog>(app_, "Kill " + name + "?", "",
+                    "Kill", "Cancel", [this, name, pid](bool yes) {
+                        if (!yes) return;
+                        app_.jobs().run(ctl("sys", "kill", {std::to_string(pid)}),
+                            [this, name](const JobResult &r) {
+                                app_.toast(r.ok ? "Killed " + name : "Could not kill " + name, !r.ok);
+                            });
+                    }));
+            };
+            n++;
+        }
+        if (!n) kit::info_row(procs_list_, "Processes", "none");
         invalidate_layout();
     }
 

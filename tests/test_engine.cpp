@@ -419,3 +419,53 @@ TEST_CASE("decode svg and png at requested size, blur, cache budget") {
 }
 
 }
+
+TEST_SUITE("Graph") {
+
+TEST_CASE("push trims to the window and clamps") {
+    Graph g;
+    for (int i = 0; i < Graph::kSlots + 5; i++) g.push(0.1f);
+    CHECK(g.values().size() == Graph::kSlots);   // oldest dropped
+    g.push(-1.f);
+    CHECK(g.values().back() == 0.f);             // clamped to 0
+    g.push(5.f);
+    CHECK(g.values().back() == 1.f);             // clamped to 1
+    g.push(0.5f);
+    CHECK(g.values().back() == 0.5f);
+    CHECK(g.values().size() == Graph::kSlots);
+    g.clear();
+    CHECK(g.values().empty());
+}
+
+TEST_CASE("paints bars on an accent track") {
+    Headless h;
+    Engine e(h.ren, 1920, 1080);
+    auto page = std::make_unique<Page>();
+    Graph *g = nullptr;
+    page->fn = [&](Engine &, Node &root) {
+        root.style.dir = Dir::Column;
+        g = root.add<Graph>();
+        g->style.w = Dim::dp(200); g->style.h = Dim::dp(50);
+        g->push(0.5f);   // one bar in the first slot
+    };
+    e.push(std::move(page), false);
+    e.update(0.016f);   // tick sets the graph's engine_ (needed for tokens)
+    e.paint();
+    SDL_Surface *s = SDL_RenderReadPixels(h.ren, nullptr);
+    REQUIRE(s);
+    auto at = [&](int x, int y) -> Uint8 * {   // ARGB8888: bytes are B,G,R,A
+        return (Uint8 *) s->pixels + (((size_t) y * (s->pitch / 4) + x) * 4);
+    };
+    SDL_FRect r = g->frame;
+    float slot = r.w / Graph::kSlots;
+    // middle of the first slot, middle of the 50% bar
+    Uint8 *p = at((int) (r.x + slot * 0.5f), (int) (r.y + r.h * 0.5f));
+    CHECK(p[0] > 200);   // accent blue
+    CHECK(p[2] < 128);   // ...not red
+    // empty slot far to the right shows the dim track, not accent
+    Uint8 *q = at((int) (r.x + slot * 20), (int) (r.y + r.h * 0.5f));
+    CHECK(q[0] < 200);
+    SDL_DestroySurface(s);
+}
+
+}

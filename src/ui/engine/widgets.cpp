@@ -148,4 +148,26 @@ namespace Foyer::ui {
         shadow_color = with_alpha(t.shadow, (Uint8) (t.shadow.a * h));
         Box::paint(c, r, alpha);
     }
+
+    // ---- Graph -------------------------------------------------------------------
+    void Graph::paint(Canvas &c, const SDL_FRect &r, float alpha)
+    {
+        if (!engine_) return;
+        const Tokens &t = engine_->tokens();
+        c.push_alpha(alpha);
+        c.rounded(r, std::min(6.f, r.h * 0.2f), with_alpha(t.surface_hi, 0x80));
+        float inset = 2.f;
+        float usable = std::max(r.h - inset * 2, 1.f);
+        float slot = r.w / kSlots;
+        float gap = std::max(1.f, slot * 0.18f);
+        int n = (int) vals_.size();
+        for (int i = 0; i < n; i++) {
+            float v = vals_[i];
+            if (v <= 0.001f) continue;
+            float h = v * usable;
+            float x = r.x + i * slot + gap * 0.5f;
+            c.fill({x, r.y + inset + (usable - h), slot - gap, h}, t.accent);
+        }
+        c.pop_alpha();
+    }
 }

@@ -168,13 +168,39 @@ namespace Foyer {
             else if (k == "gpu" && f.size() > 2) {
                 if (f[1] != "-" && !f[1].empty()) s.gpu_busy = f[1];
                 if (f[2] != "-" && !f[2].empty()) s.gpu_freq = f[2];
+                if (f.size() > 4) {   // old 3-field form: min/max stay 0
+                    if (f[3] != "-" && !f[3].empty()) s.gpu_freq_min = atoi(f[3].c_str());
+                    if (f[4] != "-" && !f[4].empty()) s.gpu_freq_max = atoi(f[4].c_str());
+                }
             } else if (k == "net" && f.size() > 3) s.net.push_back({f[1], atof(f[2].c_str()), atof(f[3].c_str())});
-            else if (k == "disk" && f.size() > 2) {
-                s.disk_used_kb = atoll(f[1].c_str());
-                s.disk_total_kb = atoll(f[2].c_str());
+            else if (k == "dio" && f.size() > 2) {
+                s.disk_read_kbs = atof(f[1].c_str());
+                s.disk_write_kbs = atof(f[2].c_str());
+            } else if (k == "disk") {
+                if (f.size() > 3) s.mounts.push_back({f[1], atoll(f[2].c_str()), atoll(f[3].c_str())});
+                else if (f.size() > 2) s.mounts.push_back({"/", atoll(f[1].c_str()), atoll(f[2].c_str())});
             }
         }
         return s;
+    }
+
+    std::vector<ProcStat> parse_sys_procs(const std::string &output)
+    {
+        std::vector<ProcStat> out;
+        std::istringstream in(output);
+        std::string line;
+        while (std::getline(in, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            auto f = tabs(line);
+            if (f.size() < 5 || f[0] != "proc") continue;
+            ProcStat p;
+            p.pid = atoi(f[1].c_str());
+            p.cpu = atof(f[2].c_str());
+            p.mem_kb = atoll(f[3].c_str());
+            p.name = f[4];
+            out.push_back(p);
+        }
+        return out;
     }
 
     std::string fmt_kb(long long kb)

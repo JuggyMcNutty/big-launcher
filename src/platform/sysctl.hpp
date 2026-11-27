@@ -43,6 +43,7 @@ namespace Foyer {
     // Parsed `foyer-ctl sys stats` snapshot (one self-contained sample).
     struct CpuCore { int index = -1, busy = 0; };
     struct NetStat { std::string name; double rx = 0, tx = 0; };   // bytes/s
+    struct MountStat { std::string mount; long long used_kb = 0, total_kb = 0; };
     struct StatsSnapshot {
         int cpu_busy = 0;
         std::vector<CpuCore> cores;
@@ -53,10 +54,16 @@ namespace Foyer {
         double uptime_s = 0;
         std::vector<std::pair<std::string, int>> temps;   // name, milli-degC
         std::string gpu_busy, gpu_freq;                  // "" = not reported
+        int gpu_freq_min = 0, gpu_freq_max = 0;          // MHz; 0 = not reported
         std::vector<NetStat> net;
-        long long disk_used_kb = 0, disk_total_kb = 0;
+        double disk_read_kbs = 0, disk_write_kbs = 0;    // KB/s; 0 = not reported
+        std::vector<MountStat> mounts;                   // per real mount
     };
     StatsSnapshot parse_sys_stats(const std::string &output);
+
+    // Parsed `foyer-ctl sys procs` (top N by CPU, descending).
+    struct ProcStat { int pid = -1; double cpu = 0; long long mem_kb = 0; std::string name; };
+    std::vector<ProcStat> parse_sys_procs(const std::string &output);
 
     // formatting helpers (stats page; unit-tested)
     std::string fmt_kb(long long kb);                    // 1234567 -> "1.2 GB"

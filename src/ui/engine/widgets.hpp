@@ -74,7 +74,28 @@ namespace Foyer::ui {
         Animated hl_{0.f};
     };
 
-    // Horizontal/vertical slider-ish value row: Left/Right change the value.
+    // Bar sparkline: fixed-slot rolling buffer (2 s samples), oldest on the
+    // left. Values are 0..1; the page owns the scaling.
+    class Graph : public Node {
+    public:
+        static constexpr int kSlots = 30;   // 2 s samples -> 60 s window
+        Graph() { style.h = Dim::dp(44); }
+        void push(float v01) {
+            vals_.push_back(std::min(std::max(v01, 0.f), 1.f));
+            if ((int) vals_.size() > kSlots) vals_.erase(vals_.begin());
+            invalidate();
+        }
+        void clear() { vals_.clear(); invalidate(); }
+        const std::vector<float>& values() const { return vals_; }
+        void paint(Canvas &c, const SDL_FRect &r, float alpha) override;
+    protected:
+        bool tick(Engine &e, float dt) override { engine_ = &e; return Node::tick(e, dt); }
+    private:
+        std::vector<float> vals_;
+        Engine *engine_ = nullptr;
+    };
+
+    // Horizontal/vertical spacer.
     class Spacer : public Node {
     public:
         explicit Spacer(float dp = 0.f) { style.w = Dim::dp(dp); style.h = Dim::dp(dp); }
