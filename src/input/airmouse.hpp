@@ -35,11 +35,18 @@ namespace Foyer {
         bool connected() const { return connected_.load(); }
         std::string device_name() const;
 
-        // MSC pairing: a physical press emits the same code twice (press,
-        // then release). Returns true for the press edge, false for release.
-        static bool pair(int code, std::map<int, bool> &state);
-        // Auto-release a code held for more than `ms` (device glitch).
-        static void sweep(std::map<int, std::pair<bool, uint64_t>> &held, uint64_t now, uint64_t ms,
+        // MSC pairing: a physical press emits the same code twice (press
+        // report, release report), and composite air mice mirror the same
+        // code onto several HID input nodes (consumer / system / kbd / mouse
+        // all advertise MSC_SCAN). step() turns the raw report stream into
+        // press/release edges: the first report after DEDUP_US is a press,
+        // the next is a release, and reports within DEDUP_US of the previous
+        // one are mirrors of the same physical press and are ignored.
+        // Returns +1 press edge, -1 release edge, 0 ignored mirror.
+        static const uint64_t DEDUP_US = 100000;   // 100 ms
+        static int step(int code, uint64_t now, std::map<int, std::pair<bool, uint64_t>> &held);
+        // Auto-release a code held for more than `window_us` (lost release).
+        static void sweep(std::map<int, std::pair<bool, uint64_t>> &held, uint64_t now, uint64_t window_us,
                           std::vector<int> *released);
 
     private:

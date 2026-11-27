@@ -40,12 +40,21 @@ namespace Foyer {
         return devname_;
     }
 
-    bool Airmouse::pair(int code, std::map<int, bool> &state)
+    int Airmouse::step(int code, uint64_t now, std::map<int, std::pair<bool, uint64_t>> &held)
     {
-        auto &p = state[code];
-        if (p) { p = false; return false; }
-        p = true;
-        return true;
+        auto &h = held[code];
+        int out;
+        if (h.first) {
+            h.first = false;          // release report (or a mirrored press)
+            out = -1;
+        } else if (now - h.second > DEDUP_US) {
+            h.first = true;           // a genuinely new press
+            out = 1;
+        } else {
+            out = 0;                  // mirror of the press we just handled
+        }
+        h.second = now;
+        return out;
     }
 
     void Airmouse::sweep(std::map<int, std::pair<bool, uint64_t>> &held, uint64_t now, uint64_t ms,
@@ -185,13 +194,14 @@ namespace Foyer {
 
         struct epoll_event events[16];
         uint64_t last_sweep = 0;
+        std::map<int, uint64_t> key_last;   // EV_KEY press dedup (per code)
         while (running_) {
             int n = epoll_wait(epfd, events, 16, 200);
             uint64_t now = now_us();
             if (now - last_sweep > 1000) {
                 last_sweep = now;
                 std::vector<int> rel;
-                sweep(held, now, 2000, &rel);
+                sweep(held, now, 500000, &rel);   // now is µs: release a stuck press after 500 ms
                 for (int code : rel) if (cb_) cb_(code, false);
             }
             for (int i = 0; i < n; i++) {
@@ -214,21 +224,15 @@ namespace Foyer {
                 ssize_t r;
                 while ((r = read(fd, &e, sizeof(e))) == sizeof(e)) {
                     if (e.type == EV_MSC && e.code == MSC_SCAN) {
-                        int code = e.value;
-                        bool pressed;
-                        if (held.count(code)) {
-                            if (held[code].first) { held[code].first = false; pressed = false; }
-                            else { held[code].first = true; held[code].second = (uint64_t) e.time.tv_sec * 1000000ull + e.time.tv_usec; pressed = true; }
-                        } else {
-                            held[code] = {true, (uint64_t) e.time.tv_sec * 1000000ull + e.time.tv_usec};
-                            pressed = true;
-                        }
-                        if (cb_) cb_(code, pressed);
+                        int edge = step(e.value, now, held);
+                        if (edge != 0 && cb_) cb_(e.value, edge > 0);
                     }
                     else if (e.type == EV_KEY && e.value == 1 && e.code != 0) {
                         // Some air mice send real keys; report press edges the
                         // same way (releases are irrelevant for our actions).
-                        if (cb_) cb_(e.code, true);
+                        // The same key can arrive on several nodes: dedup.
+                        uint64_t &last = key_last[e.code];
+                        if (now - last > DEDUP_US) { last = now; if (cb_) cb_(e.code, true); }
                     }
                 }
                 if (r < 0 && errno == ENODEV) {

@@ -145,6 +145,7 @@ App::App(const Options &o): opt_(o)
     Paths::init(opt_.config_dir);
     init_video();
     (void) evt_global();               // register user events on the main thread
+    (void) evt_airmouse();
     (void) JobQueue::evt_done();
     jobs_ = std::make_unique<JobQueue>();
     load_data();

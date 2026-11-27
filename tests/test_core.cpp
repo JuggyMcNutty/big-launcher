@@ -415,27 +415,32 @@ TEST_CASE("default keymap from the XING WEI capture") {
     CHECK(parse_action(airmouse_default_action(0x0C00E9)) == Action::VolUp);
 }
 
-TEST_CASE("MSC press/release pairing and sweep") {
-    std::map<int, bool> st;
-    // three full press/release cycles on each of two codes
-    for (int i = 0; i < 3; i++) {
-        CHECK(Airmouse::pair(0x0C0043, st) == true);    // press
-        CHECK(Airmouse::pair(0x0C0044, st) == true);    // press
-        CHECK(Airmouse::pair(0x0C0043, st) == false);   // release
-        CHECK(Airmouse::pair(0x0C0044, st) == false);   // release
-    }
-    CHECK(st.at(0x0C0043) == false);
-    CHECK(st.at(0x0C0044) == false);
-    // glitch: a press that never releases is swept after the deadline
+TEST_CASE("MSC press/release pairing, cross-node dedup and sweep") {
     std::map<int, std::pair<bool, uint64_t>> held;
-    held[5] = {true, 1000};
-    held[6] = {true, 9000};
+    // one physical press, double report (press + release), times in us
+    CHECK(Airmouse::step(0x0C0044, 1000000, held) == 1);    // press
+    CHECK(Airmouse::step(0x0C0044, 1000100, held) == -1);   // release
+    // the same code mirrored onto a second node right after: ignored
+    CHECK(Airmouse::step(0x0C0044, 1000200, held) == 0);
+    CHECK(Airmouse::step(0x0C0044, 1000300, held) == 0);
+    // a genuinely later press fires again
+    CHECK(Airmouse::step(0x0C0044, 1500000, held) == 1);
+    CHECK(Airmouse::step(0x0C0044, 1500100, held) == -1);
+    // interleaved mirrors (press A, press B, release A, release B)
+    CHECK(Airmouse::step(0x0C0043, 2000000, held) == 1);
+    CHECK(Airmouse::step(0x0C0043, 2000100, held) == -1);   // B's press seen as release
+    CHECK(Airmouse::step(0x0C0043, 2000200, held) == 0);
+    CHECK(Airmouse::step(0x0C0043, 2000300, held) == 0);
+    // glitch: a press that never releases is swept after the deadline
+    std::map<int, std::pair<bool, uint64_t>> h2;
+    h2[5] = {true, 1000};
+    h2[6] = {true, 9000};
     std::vector<int> rel;
-    Airmouse::sweep(held, 10000, 2000, &rel);
+    Airmouse::sweep(h2, 10000, 2000, &rel);
     CHECK(rel.size() == 1);
     CHECK(rel[0] == 5);
-    CHECK(held.at(5).first == false);
-    CHECK(held.at(6).first == true);
+    CHECK(h2.at(5).first == false);
+    CHECK(h2.at(6).first == true);
 }
 
 }
