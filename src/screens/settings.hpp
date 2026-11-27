@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 
 #include "kit.hpp"
@@ -122,5 +123,26 @@ namespace Foyer {
         explicit LauncherPage(App &a): Page(a, "Launcher", "Sounds, clock, screensaver and input") {}
     protected:
         void fill(ui::Engine &e, ui::Node &body) override;
+    };
+
+    // 2.4G air mouse: device status, enable toggle, per-button remap with a
+    // live highlight — press any button and its row lights up.
+    class AirMousePage : public Page {
+    public:
+        explicit AirMousePage(App &a): Page(a, "Air mouse", "Wave pointer and button remap") {}
+        bool tick(ui::Engine &e, float dt) override;
+    protected:
+        void fill(ui::Engine &e, ui::Node &body) override;
+    private:
+        ui::Text *status_ = nullptr;
+        kit::RowButton *enable_ = nullptr;
+        ui::Node *buttons_ = nullptr;      // rows container (new rows appended here)
+        std::map<int, kit::RowButton*> rows_;
+        std::map<int, std::string> shown_; // code -> current value text
+        int pressed_code_ = -1;
+        void refresh_status();
+        std::string code_label(int code) const;
+        kit::RowButton* add_row(int code);
+        void cycle(int code, int dir);
     };
 }

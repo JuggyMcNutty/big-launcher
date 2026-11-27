@@ -29,7 +29,7 @@ set(SOURCES
 )
 
 if (FOYER_EVDEV AND LIBEVDEV_FOUND)
-  list(APPEND SOURCES input/evdev_global.cpp)
+  list(APPEND SOURCES input/evdev_global.cpp input/airmouse.cpp)
 endif ()
 if (FOYER_CEC)
   list(APPEND SOURCES input/cec.cpp)

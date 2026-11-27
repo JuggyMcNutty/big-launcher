@@ -72,6 +72,15 @@ namespace Foyer::ui {
         bool dispatch_text(const std::string &t);
         void focus(Node *n);
 
+        // Pointer input (mouse / air mouse): hover focuses the topmost node
+        // under the cursor, wheel scrolls the scroller under it, left click
+        // selects, right click backs out.
+        void pointer_move(float x, float y);   // px, window space
+        void pointer_wheel(float dy);          // dy > 0 = down
+        bool pointer_click(int button);        // 1 = left, 3 = right
+        Node* hit_test(float x, float y);      // topmost focusable under point
+        bool pointer_seen() const { return pointer_seen_; }
+
         // frame
         bool update(float dt);           // returns true if anything is animating
         void layout();
@@ -93,6 +102,10 @@ namespace Foyer::ui {
         SDL_Renderer *r_;
         Metrics metrics_;
         Tokens tokens_;
+        float pointer_x_ = -1.f, pointer_y_ = -1.f;
+        float pointer_last_x_ = -1.f, pointer_last_y_ = -1.f;
+        uint64_t pointer_hover_gen_ = 0;
+        bool pointer_seen_ = false;
         Canvas canvas_;
         FontCache fonts_;
         TextCache text_;

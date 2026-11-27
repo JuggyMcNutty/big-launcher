@@ -8,7 +8,9 @@
 
 #include "../src/core/config.hpp"
 #include "../src/core/layout_model.hpp"
+#include "../src/input/action.hpp"
 #include "../src/input/action_mapper.hpp"
+#include "../src/input/airmouse.hpp"
 #include "../src/platform/process.hpp"
 
 using namespace Foyer;
@@ -379,3 +381,61 @@ TEST_CASE("ui scale, overscan and aspect") {
 
 }
 
+
+TEST_SUITE("Airmouse") {
+
+TEST_CASE("action names round-trip") {
+    CHECK(parse_action("Accept") == Action::Accept);
+    CHECK(parse_action("accept") == Action::Accept);
+    CHECK(parse_action("VolUp") == Action::VolUp);
+    CHECK(parse_action("None") == Action::None);
+    CHECK(parse_action("") == Action::None);
+    CHECK(parse_action("bogus") == Action::None);
+    CHECK(std::string(action_name(Action::VolDown)) == "VolDown");
+    size_t n = 0;
+    const Action *acts = remap_actions(n);
+    CHECK(n == 12);
+    CHECK(acts[0] == Action::None);
+}
+
+TEST_CASE("default keymap from the XING WEI capture") {
+    CHECK(airmouse_default_action(0x090001) == "Accept");   // left click
+    CHECK(airmouse_default_action(0x07002A) == "Accept");   // click button
+    CHECK(airmouse_default_action(0x0C0044) == "Accept");   // enter
+    CHECK(airmouse_default_action(0x0C0224) == "Accept");   // return
+    CHECK(airmouse_default_action(0x0C00CF) == "Back");     // del
+    CHECK(airmouse_default_action(0x0C0223) == "Mute");
+    CHECK(airmouse_default_action(0x0C00EA) == "VolDown");
+    CHECK(airmouse_default_action(0x0C00E9) == "VolUp");
+    CHECK(airmouse_default_action(0x070065) == "None");     // power: inert
+    CHECK(airmouse_default_action(0x0C0042) == "None");     // menu keys: user's call
+    CHECK(airmouse_default_label(0x070065) == "Power");
+    CHECK(airmouse_default_label(0x090001) == "Left click");
+    CHECK(airmouse_default_label(0xC00000) == "Button");    // unknown
+    CHECK(parse_action(airmouse_default_action(0x0C00E9)) == Action::VolUp);
+}
+
+TEST_CASE("MSC press/release pairing and sweep") {
+    std::map<int, bool> st;
+    // three full press/release cycles on each of two codes
+    for (int i = 0; i < 3; i++) {
+        CHECK(Airmouse::pair(0x0C0043, st) == true);    // press
+        CHECK(Airmouse::pair(0x0C0044, st) == true);    // press
+        CHECK(Airmouse::pair(0x0C0043, st) == false);   // release
+        CHECK(Airmouse::pair(0x0C0044, st) == false);   // release
+    }
+    CHECK(st.at(0x0C0043) == false);
+    CHECK(st.at(0x0C0044) == false);
+    // glitch: a press that never releases is swept after the deadline
+    std::map<int, std::pair<bool, uint64_t>> held;
+    held[5] = {true, 1000};
+    held[6] = {true, 9000};
+    std::vector<int> rel;
+    Airmouse::sweep(held, 10000, 2000, &rel);
+    CHECK(rel.size() == 1);
+    CHECK(rel[0] == 5);
+    CHECK(held.at(5).first == false);
+    CHECK(held.at(6).first == true);
+}
+
+}

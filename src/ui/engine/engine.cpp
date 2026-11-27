@@ -5,6 +5,7 @@
 
 #include "engine.hpp"
 #include "focus.hpp"
+#include "scroller.hpp"
 #include "../../render/logger.hpp"
 
 namespace Foyer::ui {
@@ -170,6 +171,94 @@ namespace Foyer::ui {
     {
         Layer *t = top();
         return t && t->on_text(*this, txt);
+    }
+
+    // ---- pointer ---------------------------------------------------------------------
+    static Node* hit_node(Engine &e, const Node *n, float x, float y)
+    {
+        if (!n->visible) return nullptr;
+        if (dynamic_cast<const Scroller*>(n)) {
+            // Content is clipped: no hits outside the viewport.
+            SDL_FRect r = screen_rect(e, *n);
+            if (x < r.x || x >= r.x + r.w || y < r.y || y >= r.y + r.h) return nullptr;
+        }
+        // Children paint over the node: frontmost first (reverse order).
+        for (auto it = n->children().rbegin(); it != n->children().rend(); ++it)
+            if (Node *h = hit_node(e, it->get(), x, y)) return h;
+        if (n->focusable) {
+            SDL_FRect r = screen_rect(e, *n);
+            if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+                return const_cast<Node*>(n);
+        }
+        return nullptr;
+    }
+
+    static Scroller* scroller_at(Engine &e, const Node *n, float x, float y)
+    {
+        if (!n->visible) return nullptr;
+        for (auto it = n->children().rbegin(); it != n->children().rend(); ++it)
+            if (Scroller *s = scroller_at(e, it->get(), x, y)) return s;
+        if (auto *s = dynamic_cast<const Scroller*>(n)) {
+            SDL_FRect r = screen_rect(e, *n);
+            if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+                return const_cast<Scroller*>(s);
+        }
+        return nullptr;
+    }
+
+    Node* Engine::hit_test(float x, float y)
+    {
+        Layer *t = top();
+        return t ? hit_node(*this, t->root.get(), x, y) : nullptr;
+    }
+
+    void Engine::pointer_move(float x, float y)
+    {
+        pointer_x_ = x;
+        pointer_y_ = y;
+        pointer_seen_ = true;
+        if (layout_invalid()) return;
+        // Rebase after any non-pointer focus change (D-pad/keyboard), and
+        // ignore sub-threshold jitter: air mice stream constant tiny RELs
+        // that would otherwise yank focus away from the D-pad.
+        if (Focus::generation() != pointer_hover_gen_) {
+            pointer_hover_gen_ = Focus::generation();
+            pointer_last_x_ = x;
+            pointer_last_y_ = y;
+            return;
+        }
+        float dx = x - pointer_last_x_, dy = y - pointer_last_y_;
+        if (dx * dx + dy * dy < 36.f) return;   // < 6 px
+        pointer_last_x_ = x;
+        pointer_last_y_ = y;
+        Node *h = hit_test(x, y);
+        if (h && h != Focus::current())
+            Focus::set(h);
+    }
+
+    void Engine::pointer_wheel(float dy)
+    {
+        if (dy == 0 || !pointer_seen_) return;
+        if (layout_invalid()) return;
+        Layer *t = top();
+        if (!t) return;
+        if (Scroller *s = scroller_at(*this, t->root.get(), pointer_x_, pointer_y_))
+            s->scroll_to(s->offset() + dy * 48.f, true);
+    }
+
+    bool Engine::pointer_click(int button)
+    {
+        if (!pointer_seen_) return false;
+        if (button == 1) {
+            if (!layout_invalid()) {
+                Node *h = hit_test(pointer_x_, pointer_y_);
+                if (h && h != Focus::current()) Focus::set(h);
+            }
+            return dispatch(Action::Accept);
+        }
+        if (button == 3)
+            return dispatch(Action::Back);
+        return false;
     }
 
     bool Engine::tick_node(Node &n, float dt)

@@ -9,9 +9,11 @@
 namespace Foyer::ui {
     static Node *g_focus = nullptr;
     static Node *g_scope = nullptr;
+    static uint64_t g_focus_gen = 0;
 
     Node* Focus::current() { return g_focus; }
     Node* Focus::scope() { return g_scope; }
+    uint64_t Focus::generation() { return g_focus_gen; }
     void Focus::set_scope(Node *s) { g_scope = s; }
 
     void Focus::node_destroyed(Node *n)
@@ -25,6 +27,7 @@ namespace Foyer::ui {
         if (n == g_focus) return;
         Node *old = g_focus;
         g_focus = n;
+        ++g_focus_gen;
         // remember in groups
         if (n)
             for (Node *p = n->parent(); p; p = p->parent())

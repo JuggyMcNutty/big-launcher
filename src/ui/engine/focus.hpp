@@ -20,6 +20,9 @@ namespace Foyer::ui {
     public:
         static Node* current();
         static void set(Node *n, bool notify = true);
+        // Bumped on every focus change; lets the engine tell pointer-driven
+        // focus changes apart from D-pad/keyboard ones.
+        static uint64_t generation();
         static void node_destroyed(Node *n);
         static void set_scope(Node *scope);
         static Node* scope();

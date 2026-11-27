@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <set>
 
 #include <lconfig.h>
 #include "settings.hpp"
@@ -20,6 +21,7 @@ namespace Foyer {
             {"layout", "Layout", "Tabs, rows and tiles", "layout"},
             {"display", "Display", "Resolution and panel info", "display"},
             {"audio", "Audio", "Output and volume", "volume"},
+            {"airmouse", "Air mouse", "Wave pointer, button remap", "mouse"},
             {"network", "Network", "Ethernet and WiFi", "network"},
             {"bluetooth", "Bluetooth", "Pair devices", "bluetooth"},
             {"launcher", "Launcher", "Sounds, clock, input", "sliders"},
@@ -106,6 +108,7 @@ namespace Foyer {
         std::unique_ptr<Layer> p;
         if (id == "audio") p = std::make_unique<AudioPage>(app);
         else if (id == "display") p = std::make_unique<DisplayPage>(app);
+        else if (id == "airmouse") p = std::make_unique<AirMousePage>(app);
         else if (id == "network") p = std::make_unique<NetworkPage>(app);
         else if (id == "bluetooth") p = std::make_unique<BluetoothPage>(app);
         else if (id == "system") p = std::make_unique<SystemPage>(app);
@@ -764,6 +767,9 @@ namespace Foyer {
         kit::section(&b, "Input");
         toggle("Gamepad", s.gamepad, "sliders", "Applies after restarting the launcher");
         toggle("Mouse click selects", s.mouse_select, "sliders");
+        auto *am = row("Air mouse remap", app_.airmouse_device_name() ? "Connected" : "Not connected",
+                       nullptr, "mouse", "Wave pointer and button mapping");
+        am->on_activate = [this] { open_settings_page(app_, "airmouse"); };
         kit::section(&b, "Startup");
         auto *as = row("Start app on boot", s.autostart.empty() ? "None" : s.autostart, nullptr, "play");
         as->on_activate = [this, as] {
@@ -777,5 +783,139 @@ namespace Foyer {
                 app_.save_settings();
             }));
         };
+    }
+
+    // ---- air mouse ------------------------------------------------------------------
+    static const int kKnownAirCodes[] = {
+        0x090001, 0x010081, 0x070065, 0x07002A, 0x0C00CF, 0x0C0223,
+        0x0C0224, 0x0C00EA, 0x0C00E9, 0x0C0042, 0x0C0043, 0x0C0044, 0x0C0045,
+    };
+
+    void AirMousePage::refresh_status()
+    {
+        if (!status_) return;
+        auto dev = app_.airmouse_device_name();
+        status_->set(dev ? *dev : "Not connected");
+    }
+
+    std::string AirMousePage::code_label(int code) const
+    {
+        auto it = app_.settings().airmouse.labels.find(code);
+        if (it != app_.settings().airmouse.labels.end() && !it->second.empty())
+            return it->second;
+        std::string l = airmouse_default_label(code);
+        if (l == "Button") {
+            char buf[16];
+            snprintf(buf, sizeof buf, "0x%06X", (unsigned) code);
+            l = std::string("Button ") + buf;
+        }
+        return l;
+    }
+
+    kit::RowButton* AirMousePage::add_row(int code)
+    {
+        if (auto it = rows_.find(code); it != rows_.end()) return it->second;
+        char hex[16];
+        snprintf(hex, sizeof hex, "0x%06X", (unsigned) code);
+        auto *r = buttons_->add<kit::RowButton>(app_, code_label(code), "None", "app", hex);
+        rows_[code] = r;
+        shown_[code] = action_name(app_.air_action(code));
+        r->on_adjust = [this, code](Action a) {
+            cycle(code, a == Action::Right ? 1 : -1);
+            return true;
+        };
+        r->on_activate = [this, code] {
+            size_t n = 0;
+            const Action *acts = remap_actions(n);
+            std::vector<std::string> names(n);
+            int sel = 0;
+            for (size_t i = 0; i < n; i++) {
+                names[i] = action_name(acts[i]);
+                if (acts[i] == app_.air_action(code)) sel = (int) i;
+            }
+            app_.ui().push(std::make_unique<ChoiceSheet>(app_, code_label(code), names, sel, [this, code](int i) {
+                size_t n = 0;
+                const Action *acts = remap_actions(n);
+                app_.settings().airmouse.keys[code] = action_name(acts[i]);
+                shown_[code] = action_name(acts[i]);
+                if (auto it = rows_.find(code); it != rows_.end()) it->second->set_value(shown_[code]);
+                app_.save_settings();
+            }));
+        };
+        ui::invalidate_layout();
+        return r;
+    }
+
+    void AirMousePage::cycle(int code, int dir)
+    {
+        size_t n = 0;
+        const Action *acts = remap_actions(n);
+        Action cur = app_.air_action(code);
+        size_t i = 0;
+        for (; i < n; i++) if (acts[i] == cur) break;
+        i = (i + (dir > 0 ? 1 : n - 1)) % n;
+        app_.settings().airmouse.keys[code] = action_name(acts[i]);
+        shown_[code] = action_name(acts[i]);
+        if (auto it = rows_.find(code); it != rows_.end()) it->second->set_value(shown_[code]);
+        app_.save_settings();
+    }
+
+    void AirMousePage::fill(Engine &e, Node &b)
+    {
+        (void) e;
+        auto &s = app_.settings();
+        kit::section(&b, "Device");
+        Text *dev = nullptr;
+        kit::info_row(&b, "Air mouse", "--", &dev);
+        status_ = dev;
+        enable_ = row("Enable", kit::onoff(s.airmouse.enabled), nullptr, "mouse", "When off the buttons pass through untouched");
+        enable_->on_activate = [this] {
+            auto &st = app_.settings();
+            st.airmouse.enabled = !st.airmouse.enabled;
+            enable_->set_value(kit::onoff(st.airmouse.enabled));
+            app_.save_settings();
+        };
+        kit::section(&b, "Buttons");
+        buttons_ = &b;   // rows go directly into the list
+        std::set<int> codes(kKnownAirCodes, std::end(kKnownAirCodes));
+        for (auto &[c, v] : s.airmouse.keys) codes.insert(c);
+        for (auto &[c, v] : s.airmouse.labels) codes.insert(c);
+        for (int c : codes) add_row(c);
+        auto *rst = row("Reset to defaults", "", nullptr, "restart");
+        rst->on_activate = [this] {
+            app_.settings().airmouse.keys.clear();
+            app_.settings().airmouse.labels.clear();
+            for (auto &[c, r] : rows_) r->set_value(airmouse_default_action(c));
+            for (auto &kv : shown_) kv.second = airmouse_default_action(kv.first);
+            app_.save_settings();
+        };
+        refresh_status();
+    }
+
+    bool AirMousePage::tick(Engine &e, float dt)
+    {
+        bool a = Page::tick(e, dt);
+        if (app_.airmouse_device_name() && status_) refresh_status();
+        std::vector<App::AirActivity> ev;
+        app_.drain_air_activity(ev);
+        for (auto &act : ev) {
+            auto it = rows_.find(act.code);
+            if (it == rows_.end()) {
+                add_row(act.code);   // newly discovered button
+                it = rows_.find(act.code);
+                if (it == rows_.end()) continue;
+                it->second->set_value("New - assign an action");
+                shown_[act.code] = "New - assign an action";
+                continue;
+            }
+            if (act.pressed) {
+                pressed_code_ = act.code;
+                it->second->set_value("\u25CF " + shown_[act.code]);
+            } else {
+                if (pressed_code_ == act.code) pressed_code_ = -1;
+                it->second->set_value(shown_[act.code]);
+            }
+        }
+        return a;
     }
 }

@@ -21,6 +21,10 @@ add_executable(foyer_tests
 )
 target_include_directories(foyer_tests PRIVATE ${PROJECT_BINARY_DIR})
 target_compile_definitions(foyer_tests PRIVATE FOYER_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+if (LIBEVDEV_FOUND)
+  target_sources(foyer_tests PRIVATE ${PROJECT_SOURCE_DIR}/src/input/airmouse.cpp)
+  target_link_libraries(foyer_tests PkgConfig::LIBEVDEV)
+endif ()
 target_link_libraries(foyer_tests
   PkgConfig::SDL3
   PkgConfig::SDL3_IMAGE

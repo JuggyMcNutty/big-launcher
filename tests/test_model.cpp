@@ -215,3 +215,38 @@ TEST_CASE("shipped data files parse") {
 }
 
 }
+
+TEST_CASE("airmouse settings round-trip") {
+    TmpDir d;
+    Settings s;
+    s.airmouse.enabled = false;
+    s.airmouse.match = "XING WEI";
+    s.airmouse.keys[0x0C0044] = "Accept";
+    s.airmouse.keys[458853] = "None";
+    s.airmouse.labels[0x0C0224] = "My button";
+    REQUIRE(save_settings(d / "settings.toml", s));
+    Settings r = load_settings(d / "settings.toml");
+    CHECK(r.airmouse.enabled == false);
+    CHECK(r.airmouse.match == "XING WEI");
+    CHECK(r.airmouse.keys.size() == 2);
+    CHECK(r.airmouse.keys.at(0x0C0044) == "Accept");
+    CHECK(r.airmouse.keys.at(458853) == "None");
+    CHECK(r.airmouse.labels.at(0x0C0224) == "My button");
+    // hand-written file with bare integer keys in an inline table
+    write(d / "hand.toml",
+          "[input]\nmouse_select = true\n[input.airmouse]\nenabled = true\nmatch = \"TEST\"\n"
+          "keys = { 786499 = \"Back\", 458794 = \"Accept\" }\n");
+    Settings h = load_settings(d / "hand.toml");
+    CHECK(h.mouse_select);
+    CHECK(h.airmouse.enabled);
+    CHECK(h.airmouse.match == "TEST");
+    CHECK(h.airmouse.keys.size() == 2);
+    CHECK(h.airmouse.keys.at(786499) == "Back");
+    CHECK(h.airmouse.keys.at(458794) == "Accept");
+    // missing section keeps defaults
+    write(d / "plain.toml", "[input]\nmouse_select = false\n");
+    Settings p = load_settings(d / "plain.toml");
+    CHECK(p.airmouse.enabled);
+    CHECK(p.airmouse.match == "XING WEI");
+    CHECK(p.airmouse.keys.empty());
+}

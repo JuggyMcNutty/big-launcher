@@ -227,6 +227,27 @@ namespace Foyer {
             get(*a, "gamepad", s.gamepad);
             get(*a, "gamepad_mappings", s.gamepad_mappings);
             get(*a, "mouse_select", s.mouse_select);
+            for (const auto &kv : *a) {
+                if (std::string(kv.first) != "airmouse") continue;
+                auto am = kv.second.as_table();
+                if (!am) break;
+                get(*am, "enabled", s.airmouse.enabled);
+                get(*am, "match", s.airmouse.match);
+                for (const auto &kv2 : *am) {
+                    std::string k = std::string(kv2.first);
+                    if (k != "keys" && k != "labels") continue;
+                    auto tbl = kv2.second.as_table();
+                    if (!tbl) continue;
+                    auto &dst = (k == "keys") ? s.airmouse.keys : s.airmouse.labels;
+                    for (auto &e : *tbl) {
+                        auto v = e.second.value<std::string>();
+                        if (!v) continue;
+                        try { dst[std::stoi(std::string(e.first))] = *v; }
+                        catch (...) {}
+                    }
+                }
+                break;
+            }
         }
         if (auto a = t["launcher"].as_table()) {
             get(*a, "autostart", s.autostart);
@@ -261,8 +282,16 @@ namespace Foyer {
         t.insert("clock", toml::table{{"enabled", s.clock}, {"format", s.clock_format}});
         t.insert("screensaver", toml::table{{"enabled", s.screensaver}, {"idle_seconds", s.screensaver_idle_s},
                                             {"dim_percent", s.screensaver_dim}});
-        t.insert("input", toml::table{{"gamepad", s.gamepad}, {"gamepad_mappings", s.gamepad_mappings},
-                                      {"mouse_select", s.mouse_select}});
+        {
+            toml::table am{{"enabled", s.airmouse.enabled}, {"match", s.airmouse.match}};
+            toml::table keys, labels;
+            for (auto &[code, name] : s.airmouse.keys) keys.insert(std::to_string(code), name);
+            for (auto &[code, name] : s.airmouse.labels) labels.insert(std::to_string(code), name);
+            am.insert("keys", keys);
+            am.insert("labels", labels);
+            t.insert("input", toml::table{{"gamepad", s.gamepad}, {"gamepad_mappings", s.gamepad_mappings},
+                                          {"mouse_select", s.mouse_select}, {"airmouse", am}});
+        }
         t.insert("launcher", toml::table{{"autostart", s.autostart}, {"asset_budget_mb", (int64_t) s.asset_budget_mb}});
         toml::array hk;
         for (auto &h : s.hotkeys) hk.push_back(toml::table{{"key", h.key}, {"command", h.command}});

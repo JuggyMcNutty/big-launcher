@@ -300,6 +300,80 @@ TEST_CASE("scroller follows focus") {
     CHECK(r.x + r.w <= 500 + 0.5f);
 }
 
+TEST_CASE("pointer: hover focus, click select, wheel scroll") {
+    Headless h;
+    Engine e(h.ren, 1920, 1080);
+    Scroller *sc = nullptr;
+    Node *items[5];
+    bool clicked = false;
+    auto page = std::make_unique<Page>();
+    page->fn = [&](Engine &, Node &root) {
+        root.style.dir = Dir::Column;
+        sc = root.add<Scroller>(Dir::Column);
+        sc->style.w = Dim::dp(300); sc->style.h = Dim::dp(200);   // 2 of 5 items visible
+        sc->margin = 0;
+        for (int i = 0; i < 5; i++) {
+            items[i] = box(sc, 300, 100);
+            items[i]->focusable = true;
+        }
+    };
+    e.push(std::move(page), false);
+    e.layout();
+    // hover item 1's centre -> focus jumps there (first event rebases origin)
+    SDL_FRect r1 = abs_rect(e, items[1]);
+    e.pointer_move(r1.x + r1.w / 2, r1.y + r1.h / 2);
+    e.pointer_move(r1.x + r1.w / 2 + 8, r1.y + r1.h / 2 + 8);
+    CHECK(Focus::current() == items[1]);
+    // hover empty area -> focus stays
+    e.pointer_move(1800, 1000);
+    CHECK(Focus::current() == items[1]);
+    // clipped content: item 3 is scrolled out of the 200px viewport, no hit
+    CHECK(e.hit_test(r1.x + 10, r1.y + 350) != items[3]);
+    // top-left corner hits the first item (no scroll yet)
+    CHECK(e.hit_test(10, 10) == items[0]);
+    // left click -> activate the hovered node (pointer still over item 1)
+    items[1]->on_activate = [&] { clicked = true; };
+    e.pointer_click(1);
+    CHECK(clicked);
+    // wheel down scrolls the scroller under the pointer
+    e.pointer_move(r1.x + r1.w / 2 + 8, r1.y + r1.h / 2 + 8);
+    e.pointer_wheel(2);
+    for (int i = 0; i < 300; i++) e.update(1.f / 60.f);
+    CHECK(sc->offset() > 0);
+    // after scrolling (offset 96), the same point hits the revealed item 2
+    CHECK(e.hit_test(r1.x + r1.w / 2, r1.y + r1.h / 2) == items[2]);
+}
+
+TEST_CASE("pointer: D-pad beats pointer jitter") {
+    Headless h;
+    Engine e(h.ren, 1920, 1080);
+    Node *items[3];
+    auto page = std::make_unique<Page>();
+    page->fn = [&](Engine &, Node &root) {
+        root.style.dir = Dir::Column;
+        root.style.align = Align::Center;
+        root.style.justify = Justify::Center;
+        root.style.gap = 20;
+        for (int i = 0; i < 3; i++) { items[i] = box(&root, 300, 80); items[i]->focusable = true; }
+    };
+    e.push(std::move(page), false);
+    e.layout();
+    SDL_FRect r1 = abs_rect(e, items[1]);
+    e.pointer_move(r1.x + 100, r1.y + 40);
+    e.pointer_move(r1.x + 108, r1.y + 48);
+    CHECK(Focus::current() == items[1]);
+    e.dispatch(Foyer::Action::Down);
+    CHECK(Focus::current() == items[2]);
+    // a resting air mouse streams tiny RELs; 50 of them must not steal focus
+    for (int i = 0; i < 50; i++)
+        e.pointer_move(r1.x + 100 + (i % 3), r1.y + 40 + (i % 2));
+    CHECK(Focus::current() == items[2]);
+    // a real wave re-engages hover
+    SDL_FRect r0 = abs_rect(e, items[0]);
+    e.pointer_move(r0.x + 100, r0.y + 40);
+    CHECK(Focus::current() == items[0]);
+}
+
 }
 
 TEST_SUITE("Assets") {

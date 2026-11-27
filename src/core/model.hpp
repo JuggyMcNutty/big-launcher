@@ -56,6 +56,14 @@ namespace Foyer {
 
     // ---- settings.toml ----------------------------------------------------------------
     struct KeyBinding { std::string key; std::string command; };   // key: SDL key name
+    // Air mouse (2.4G wave pointer): device match + per-code button remap.
+    // codes are the raw MSC_SCAN values (HID usage, page<<16|usage<<8).
+    struct AirmouseSettings {
+        bool enabled = true;
+        std::string match = "XING WEI";      // USB product/manufacturer substring
+        std::map<int, std::string> keys;     // code -> action name (default if missing)
+        std::map<int, std::string> labels;   // code -> label override ("")
+    };
     struct Settings {
         std::string theme = "default";
         std::string accent;        // "" = theme accent, else #RRGGBB
@@ -75,6 +83,7 @@ namespace Foyer {
         bool gamepad = true;
         std::string gamepad_mappings;
         bool mouse_select = false;
+        AirmouseSettings airmouse;
         std::string autostart;
         size_t asset_budget_mb = 96;
         std::vector<KeyBinding> hotkeys;

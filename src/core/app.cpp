@@ -132,6 +132,12 @@ uint32_t App::evt_global()
     return t;
 }
 
+uint32_t App::evt_airmouse()
+{
+    static uint32_t t = SDL_RegisterEvents(1);
+    return t;
+}
+
 App::App(const Options &o): opt_(o)
 {
     ensure_path();
@@ -173,6 +179,20 @@ App::App(const Options &o): opt_(o)
         });
         evdev_->start();
     }
+    if (opt_.screenshot.empty()) {
+        // Air mouse (main instance AND the quick-panel overlay: the overlay's
+        // window is focused while it is open, but MSC_SCAN never reaches it via
+        // the compositor, so it reads the buttons itself).
+        airmouse_ = std::make_unique<Airmouse>([](int code, bool pressed) {
+            SDL_Event e{};
+            e.type = evt_airmouse();
+            e.user.data1 = (void*) (intptr_t) code;
+            e.user.data2 = (void*) (intptr_t) (int) (pressed ? 1 : 0);
+            SDL_PushEvent(&e);
+        });
+        airmouse_->set_match(settings_.airmouse.match);
+        airmouse_->start();
+    }
 #endif
 #ifdef FOYER_CEC
     cec_ = std::make_unique<Cec>();
@@ -188,6 +208,7 @@ App::~App()
 {
 #ifdef FOYER_EVDEV
     evdev_.reset();
+    airmouse_.reset();
 #endif
     if (jobs_) jobs_->stop();
     engine_.reset();   // layers first (they may reference the window)
@@ -361,6 +382,9 @@ void App::save_settings()
 {
     if (!Foyer::save_settings((fs::path(Paths::config_dir()) / "settings.toml").string(), settings_))
         toast("Could not save settings", true);
+#ifdef FOYER_EVDEV
+    if (airmouse_) airmouse_->set_match(settings_.airmouse.match);
+#endif
 }
 
 void App::save_layout()
@@ -550,6 +574,57 @@ void App::on_global(Action a)
     }
 }
 
+Action App::resolve_air_action(int code) const
+{
+    const auto &s = settings_.airmouse;
+    auto it = s.keys.find(code);
+    return parse_action(it != s.keys.end() ? it->second : airmouse_default_action(code));
+}
+
+void App::on_airmouse(int code, bool pressed)
+{
+    if (air_pending_.size() < 32) air_pending_.push_back({code, pressed});
+    if (!pressed) return;
+    if (opt_.overlay) {
+        // Quick panel is focused: full UI handling in this instance.
+        if (settings_.airmouse.enabled) {
+            Action a = resolve_air_action(code);
+            if (a != Action::None) dispatch(a);
+        }
+        return;
+    }
+    if (overlay_proc_.alive()) return;   // the overlay instance owns the buttons
+    if (!settings_.airmouse.enabled) return;
+    Action a = resolve_air_action(code);
+    if (a == Action::None) return;
+    if (app_proc_.alive()) {
+        // App has focus: only launcher globals travel through.
+        if (a == Action::Home || a == Action::Menu) open_quick_panel();
+        else if (a == Action::VolUp || a == Action::VolDown || a == Action::Mute) on_global(a);
+        return;
+    }
+    dispatch(a);
+}
+
+void App::drain_air_activity(std::vector<AirActivity> &out)
+{
+    out.swap(air_pending_);
+}
+
+Action App::air_action(int code) const
+{
+    return resolve_air_action(code);
+}
+
+std::optional<std::string> App::airmouse_device_name() const
+{
+#ifdef FOYER_EVDEV
+    if (airmouse_ && airmouse_->connected())
+        return airmouse_->device_name();
+#endif
+    return std::nullopt;
+}
+
 void App::dispatch(Action a)
 {
     last_input_ = SDL_GetTicks();
@@ -629,13 +704,30 @@ void App::handle(SDL_Event &e)
             }
             break;
         }
+        case SDL_EVENT_MOUSE_MOTION:
+            last_input_ = SDL_GetTicks();
+            if (!app_proc_.alive() && !overlay_proc_.alive())
+                engine_->pointer_move(e.motion.x, e.motion.y);
+            break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
-            if (settings_.mouse_select && e.button.button == SDL_BUTTON_LEFT) dispatch(Action::Accept);
+            last_input_ = SDL_GetTicks();
+            if (app_proc_.alive() || overlay_proc_.alive()) break;   // app/panel owns the pointer
+            if (e.button.button == SDL_BUTTON_LEFT && settings_.mouse_select)
+                engine_->pointer_click(1);
+            else if (e.button.button == SDL_BUTTON_RIGHT)
+                engine_->pointer_click(3);
+            break;
+        case SDL_EVENT_MOUSE_WHEEL:
+            if (app_proc_.alive() || overlay_proc_.alive()) break;
+            engine_->pointer_wheel(e.wheel.y);
             break;
         default:
             if (e.type == evt_global()) {
                 // evdev: only while an app (not us) has focus
                 if (app_proc_.alive() && !overlay_proc_.alive()) on_global((Action) (int) (intptr_t) e.user.data1);
+            }
+            else if (e.type == evt_airmouse()) {
+                on_airmouse((int) (intptr_t) e.user.data1, (bool) (intptr_t) e.user.data2);
             }
             break;
     }

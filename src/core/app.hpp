@@ -2,6 +2,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <thread>
 #include <atomic>
@@ -18,6 +19,7 @@
 
 #ifdef FOYER_EVDEV
 #include "../input/evdev_global.hpp"
+#include "../input/airmouse.hpp"
 #endif
 #ifdef FOYER_CEC
 #include "../input/cec.hpp"
@@ -74,6 +76,12 @@ namespace Foyer {
         void reload_apps();
         void apply_appearance();        // re-load theme tokens + metrics (live)
 
+        // air mouse button activity (for the remap page live highlight)
+        struct AirActivity { int code; bool pressed; };
+        void drain_air_activity(std::vector<AirActivity> &out);
+        std::optional<std::string> airmouse_device_name() const;
+        Action air_action(int code) const;
+
         // actions
         void execute(const std::string &command, const std::string &title = "");
         void launch(const AppEntry &a);
@@ -93,6 +101,7 @@ namespace Foyer {
         void play_select();
 
         static uint32_t evt_global();   // SDL_RegisterEvents (evdev/CEC -> main thread)
+        static uint32_t evt_airmouse(); // SDL_RegisterEvents (air mouse -> main thread)
 
     private:
         Options opt_;
@@ -119,6 +128,10 @@ namespace Foyer {
         int frames_ = 0;
 #ifdef FOYER_EVDEV
         std::unique_ptr<EvdevGlobal> evdev_;
+        std::unique_ptr<Airmouse> airmouse_;
+        std::vector<AirActivity> air_pending_;
+        void on_airmouse(int code, bool pressed);
+        Action resolve_air_action(int code) const;
 #endif
 #ifdef FOYER_CEC
         std::unique_ptr<Cec> cec_;
