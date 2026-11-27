@@ -75,18 +75,24 @@ namespace Foyer::ui {
     };
 
     // Bar sparkline: fixed-slot rolling buffer (2 s samples), oldest on the
-    // left. Values are 0..1; the page owns the scaling.
+    // left. Stores raw values; bars are drawn relative to `scale` if > 0,
+    // otherwise to the largest value in the window (auto-scaling, so the
+    // whole history is redrawn consistently when a spike arrives / ages out).
     class Graph : public Node {
     public:
         static constexpr int kSlots = 30;   // 2 s samples -> 60 s window
         Graph() { style.h = Dim::dp(44); }
-        void push(float v01) {
-            vals_.push_back(std::min(std::max(v01, 0.f), 1.f));
+        float scale = 1.f;                  // full-height value; <= 0 = auto
+        float auto_floor = 0.f;             // auto: never scale below this
+        void push(float v) {
+            if (!(v >= 0.f)) v = 0.f;       // negatives and NaN -> 0
+            vals_.push_back(v);
             if ((int) vals_.size() > kSlots) vals_.erase(vals_.begin());
             invalidate();
         }
         void clear() { vals_.clear(); invalidate(); }
         const std::vector<float>& values() const { return vals_; }
+        float full_scale() const;           // the value drawn at full height
         void paint(Canvas &c, const SDL_FRect &r, float alpha) override;
     protected:
         bool tick(Engine &e, float dt) override { engine_ = &e; return Node::tick(e, dt); }

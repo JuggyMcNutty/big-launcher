@@ -173,7 +173,10 @@ namespace Foyer {
                     if (f[4] != "-" && !f[4].empty()) s.gpu_freq_max = atoi(f[4].c_str());
                 }
             } else if (k == "net" && f.size() > 3) s.net.push_back({f[1], atof(f[2].c_str()), atof(f[3].c_str())});
+            else if (k == "top" && f.size() > 4)
+                s.top.push_back({atoi(f[1].c_str()), atof(f[2].c_str()), atoll(f[3].c_str()), f[4]});
             else if (k == "dio" && f.size() > 2) {
+                s.has_dio = true;
                 s.disk_read_kbs = atof(f[1].c_str());
                 s.disk_write_kbs = atof(f[2].c_str());
             } else if (k == "disk") {
@@ -186,32 +189,18 @@ namespace Foyer {
 
     std::vector<ProcStat> parse_sys_procs(const std::string &output)
     {
-        std::vector<ProcStat> out;
-        std::istringstream in(output);
-        std::string line;
-        while (std::getline(in, line)) {
-            if (!line.empty() && line.back() == '\r') line.pop_back();
-            auto f = tabs(line);
-            if (f.size() < 5 || f[0] != "proc") continue;
-            ProcStat p;
-            p.pid = atoi(f[1].c_str());
-            p.cpu = atof(f[2].c_str());
-            p.mem_kb = atoll(f[3].c_str());
-            p.name = f[4];
-            out.push_back(p);
-        }
-        return out;
+        return parse_sys_stats(output).top;
     }
 
     std::string fmt_kb(long long kb)
     {
+        // input is kibibytes (/proc/meminfo, df -k, statm*pagekb)
         char buf[64];
         double v = (double) kb;
-        if (kb >= 1024LL * 1024 * 1024 * 1024) snprintf(buf, sizeof buf, "%.1f TB", v / 1024 / 1024 / 1024 / 1024);
-        else if (kb >= 1024LL * 1024 * 1024) snprintf(buf, sizeof buf, "%.1f GB", v / 1024 / 1024 / 1024);
-        else if (kb >= 1024LL * 1024) snprintf(buf, sizeof buf, "%.1f MB", v / 1024 / 1024);
-        else if (kb >= 1024) snprintf(buf, sizeof buf, "%lld kB", kb / 1024);
-        else snprintf(buf, sizeof buf, "%lld kB", kb);
+        if (kb >= 1024LL * 1024 * 1024) snprintf(buf, sizeof buf, "%.1f TB", v / 1024 / 1024 / 1024);
+        else if (kb >= 1024LL * 1024) snprintf(buf, sizeof buf, "%.1f GB", v / 1024 / 1024);
+        else if (kb >= 1024) snprintf(buf, sizeof buf, "%.0f MB", v / 1024);
+        else snprintf(buf, sizeof buf, "%lld kB", std::max(kb, 0LL));
         return buf;
     }
 

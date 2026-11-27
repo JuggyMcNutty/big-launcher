@@ -1,6 +1,7 @@
 #pragma once
 
-#include <deque>
+#include <memory>
+#include <vector>
 #include <map>
 #include <string>
 
@@ -92,20 +93,37 @@ namespace Foyer {
         explicit StatsPage(App &a): Page(a, "System stats", "Live CPU, memory and thermal usage") {}
         void on_enter(ui::Engine &e) override;
         bool tick(ui::Engine &e, float dt) override;
+        bool on_action(ui::Engine &e, Action a) override;
+        static constexpr int kTopProcs = 8;
     protected:
         void fill(ui::Engine &e, ui::Node &body) override;
     private:
+        // Job callbacks hold a weak_ptr to this: a sample that finishes after
+        // the page was popped (Back mid-sample) is dropped, not run on a
+        // freed page.
+        std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);
         ui::Text *cpu_ = nullptr, *load_ = nullptr, *procs_ = nullptr, *uptime_ = nullptr;
         ui::Text *mem_ = nullptr, *swap_ = nullptr, *dio_ = nullptr;
-        ui::Node *cores_ = nullptr, *mounts_ = nullptr, *temps_ = nullptr, *net_ = nullptr;
-        ui::Node *procs_list_ = nullptr;
         ui::Text *gpu_ = nullptr, *net_total_ = nullptr;
         ui::Graph *cpu_g_ = nullptr, *mem_g_ = nullptr, *net_g_ = nullptr;
+        // Variable-length groups: rows are rebuilt only when the count
+        // changes, otherwise their value texts are updated in place.
+        struct Group { ui::Node *box = nullptr; std::vector<ui::Text*> keys, vals; };
+        Group cores_, mounts_, temps_, net_;
+        // Process rows are focusable, so they are never rebuilt while the
+        // page is up (that would destroy the focused row): fixed slots,
+        // hidden when unused; the pid behind each slot is looked up at
+        // activation time.
+        struct ProcRow { kit::RowButton *b = nullptr; int pid = -1; std::string name; };
+        ProcRow top_[kTopProcs];
+        ui::Text *top_empty_ = nullptr;
         float poll_ = 0;              // seconds since the last sample
-        std::deque<double> net_hist_;   // raw rx+tx for adaptive graph scaling
+        bool in_flight_ = false;
         void refresh();
         void show(const StatsSnapshot &s);
         void show_procs(const std::vector<ProcStat> &p);
+        void set_group(Group &g, const std::vector<std::pair<std::string, std::string>> &rows);
+        void confirm_kill(int slot);
     };
 
     class PowerPage : public Page {

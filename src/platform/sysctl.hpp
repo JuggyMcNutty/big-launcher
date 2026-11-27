@@ -44,6 +44,8 @@ namespace Foyer {
     struct CpuCore { int index = -1, busy = 0; };
     struct NetStat { std::string name; double rx = 0, tx = 0; };   // bytes/s
     struct MountStat { std::string mount; long long used_kb = 0, total_kb = 0; };
+    // top-style CPU% (100 == one full core), resident set in kB
+    struct ProcStat { int pid = -1; double cpu = 0; long long mem_kb = 0; std::string name; };
     struct StatsSnapshot {
         int cpu_busy = 0;
         std::vector<CpuCore> cores;
@@ -56,13 +58,13 @@ namespace Foyer {
         std::string gpu_busy, gpu_freq;                  // "" = not reported
         int gpu_freq_min = 0, gpu_freq_max = 0;          // MHz; 0 = not reported
         std::vector<NetStat> net;
-        double disk_read_kbs = 0, disk_write_kbs = 0;    // KB/s; 0 = not reported
+        bool has_dio = false;                            // root disk found in diskstats
+        double disk_read_kbs = 0, disk_write_kbs = 0;    // KB/s
         std::vector<MountStat> mounts;                   // per real mount
+        std::vector<ProcStat> top;                       // `--top N`: busiest first
     };
     StatsSnapshot parse_sys_stats(const std::string &output);
-
-    // Parsed `foyer-ctl sys procs` (top N by CPU, descending).
-    struct ProcStat { int pid = -1; double cpu = 0; long long mem_kb = 0; std::string name; };
+    // Just the `top` lines (also the whole output of `foyer-ctl sys procs`).
     std::vector<ProcStat> parse_sys_procs(const std::string &output);
 
     // formatting helpers (stats page; unit-tested)

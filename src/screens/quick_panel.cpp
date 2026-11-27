@@ -74,14 +74,21 @@ namespace Foyer {
             add("Resume", "play", [this] { close_panel(); });
         }
         vol_ = add("Volume", "volume", nullptr, "--");
-        vol_->on_adjust = [this](Action a) {
-            app_.jobs().run(ctl("audio", a == Action::Right ? "volume/up" : "volume/down"), [this](const JobResult&) { refresh_volume(); });
+        auto vol_job = [this](const char *cmd) {
+            vol_in_flight_++;
+            std::weak_ptr<bool> alive = alive_;
+            app_.jobs().run(ctl("audio", cmd), [this, alive](const JobResult&) {
+                if (alive.expired()) return;
+                vol_in_flight_--;
+                refresh_volume();
+            });
+        };
+        vol_->on_adjust = [this, vol_job](Action a) {
+            vol_job(a == Action::Right ? "volume/up" : "volume/down");
             app_.play_click();
             return true;
         };
-        vol_->on_activate = [this] {
-            app_.jobs().run(ctl("audio", "mute/toggle"), [this](const JobResult&) { refresh_volume(); });
-        };
+        vol_->on_activate = [vol_job] { vol_job("mute/toggle"); };
         if (!external_) {
             add("Settings", "sliders", [this] { app_.ui().pop(false); app_.open_settings(); });
             add("Display", "display", [this] { app_.ui().pop(false); app_.open_settings("display"); });
@@ -122,18 +129,23 @@ namespace Foyer {
     {
         if (e.top() != this) { poll_ = 0; return false; }   // only poll while on top
         poll_ += dt;
-        if (poll_ >= 2.f) {
+        // Hold off while volume steps are queued: the single job worker
+        // would otherwise run a 0.5 s sample ahead of the next step.
+        if (poll_ >= 2.f && !stats_in_flight_ && vol_in_flight_ == 0) {
             poll_ = 0;
-            if (!app_.jobs().busy()) refresh_stats();
-            else poll_ = 1.9f;   // wait for the queue; retry soon
-            return true;
+            refresh_stats();
         }
-        return false;
+        return false;   // the job result invalidates; no need to force frames
     }
 
     void QuickPanel::refresh_stats()
     {
-        app_.jobs().run(ctl("sys", "stats"), [this](const JobResult &r) {
+        if (stats_in_flight_) return;   // on_enter re-fires after every dialog
+        stats_in_flight_ = true;
+        std::weak_ptr<bool> alive = alive_;
+        app_.jobs().run(ctl("sys", "stats"), [this, alive](const JobResult &r) {
+            if (alive.expired()) return;
+            stats_in_flight_ = false;
             if (!r.ok || !stats_line_) return;
             StatsSnapshot s = parse_sys_stats(r.output);
             std::string line = "CPU " + std::to_string(s.cpu_busy) + "%";
@@ -151,7 +163,9 @@ namespace Foyer {
 
     void QuickPanel::refresh_volume()
     {
-        app_.jobs().run(ctl("audio", "volume/get"), [this](const JobResult &r) {
+        std::weak_ptr<bool> alive = alive_;
+        app_.jobs().run(ctl("audio", "volume/get"), [this, alive](const JobResult &r) {
+            if (alive.expired()) return;
             int v = -1; bool m = false;
             for (auto &l : split_lines(r.output)) {
                 if (l.starts_with("volume=")) v = atoi(l.c_str() + 7);

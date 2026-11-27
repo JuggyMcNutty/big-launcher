@@ -2,6 +2,7 @@
 // scroller, asset decode. Uses an offscreen software renderer.
 #include "doctest.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <cstdio>
 #include <fstream>
@@ -422,16 +423,25 @@ TEST_CASE("decode svg and png at requested size, blur, cache budget") {
 
 TEST_SUITE("Graph") {
 
-TEST_CASE("push trims to the window and clamps") {
+TEST_CASE("push trims to the window; scale and auto-scale") {
     Graph g;
     for (int i = 0; i < Graph::kSlots + 5; i++) g.push(0.1f);
     CHECK(g.values().size() == Graph::kSlots);   // oldest dropped
     g.push(-1.f);
-    CHECK(g.values().back() == 0.f);             // clamped to 0
+    CHECK(g.values().back() == 0.f);             // negatives -> 0
+    g.push(std::nanf(""));
+    CHECK(g.values().back() == 0.f);             // NaN -> 0
     g.push(5.f);
-    CHECK(g.values().back() == 1.f);             // clamped to 1
-    g.push(0.5f);
-    CHECK(g.values().back() == 0.5f);
+    CHECK(g.values().back() == 5.f);             // raw values kept
+    CHECK(g.full_scale() == 1.f);                // fixed scale (default 1)
+    g.scale = 0.f;                               // auto: window max...
+    CHECK(g.full_scale() == 5.f);
+    g.auto_floor = 8.f;                          // ...but never below the floor
+    CHECK(g.full_scale() == 8.f);
+    // the spike ages out of the window -> the scale follows it down
+    g.auto_floor = 0.f;
+    for (int i = 0; i < Graph::kSlots; i++) g.push(2.f);
+    CHECK(g.full_scale() == 2.f);
     CHECK(g.values().size() == Graph::kSlots);
     g.clear();
     CHECK(g.values().empty());

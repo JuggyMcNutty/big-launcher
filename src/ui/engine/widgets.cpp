@@ -150,24 +150,34 @@ namespace Foyer::ui {
     }
 
     // ---- Graph -------------------------------------------------------------------
+    float Graph::full_scale() const
+    {
+        if (scale > 0.f) return scale;
+        float m = auto_floor;
+        for (float v : vals_) m = std::max(m, v);
+        return m;
+    }
+
     void Graph::paint(Canvas &c, const SDL_FRect &r, float alpha)
     {
-        if (!engine_) return;
+        // The engine has already pushed this node's opacity onto the canvas
+        // (alpha == canvas.alpha()), so don't apply it a second time.
+        (void) alpha;
+        if (!engine_ || r.w < 2.f || r.h < 2.f) return;
         const Tokens &t = engine_->tokens();
-        c.push_alpha(alpha);
-        c.rounded(r, std::min(6.f, r.h * 0.2f), with_alpha(t.surface_hi, 0x80));
-        float inset = 2.f;
+        const auto &m = engine_->metrics();
+        c.rounded(r, std::min(m.dp(6), r.h * 0.2f), with_alpha(t.surface_hi, 0x80));
+        float fs = full_scale();
+        if (fs <= 0.f) return;
+        float inset = m.dp(2);
         float usable = std::max(r.h - inset * 2, 1.f);
         float slot = r.w / kSlots;
         float gap = std::max(1.f, slot * 0.18f);
-        int n = (int) vals_.size();
-        for (int i = 0; i < n; i++) {
-            float v = vals_[i];
-            if (v <= 0.001f) continue;
-            float h = v * usable;
+        for (size_t i = 0; i < vals_.size(); i++) {
+            float h = std::min(vals_[i] / fs, 1.f) * usable;
+            if (h < 0.5f) continue;
             float x = r.x + i * slot + gap * 0.5f;
             c.fill({x, r.y + inset + (usable - h), slot - gap, h}, t.accent);
         }
-        c.pop_alpha();
     }
 }

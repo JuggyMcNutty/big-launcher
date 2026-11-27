@@ -285,6 +285,7 @@ TEST_CASE("parses a snapshot") {
         "gpu\t78\t1200\t300\t1500\n"
         "net\teno1\t125\t2048\n"
         "dio\t4096\t128\n"
+        "top\t812\t37.5\t94396\tjellyfin-desktop\n"
         "disk\t/\t11800000\t29000000\n"
         "disk\t/boot\t53211\t258095\n";
     auto s = parse_sys_stats(out);
@@ -300,7 +301,7 @@ TEST_CASE("parses a snapshot") {
     CHECK(s.swap_used_kb == 102400);
     CHECK(s.load1 == 0.34);
     CHECK(s.load15 == 0.39);
-    CHECK(s.procs == 212);
+    CHECK(s.procs == 212);   // "proc" (count) and "top" (process) don't collide
     CHECK(s.procs_running == 3);
     CHECK(s.uptime_s == 254432.5);
     REQUIRE(s.temps.size() == 1);
@@ -314,8 +315,13 @@ TEST_CASE("parses a snapshot") {
     CHECK(s.net[0].name == "eno1");
     CHECK(s.net[0].rx == 125);
     CHECK(s.net[0].tx == 2048);
+    CHECK(s.has_dio);
     CHECK(s.disk_read_kbs == 4096);
     CHECK(s.disk_write_kbs == 128);
+    REQUIRE(s.top.size() == 1);
+    CHECK(s.top[0].pid == 812);
+    CHECK(s.top[0].cpu == 37.5);
+    CHECK(s.top[0].name == "jellyfin-desktop");
     REQUIRE(s.mounts.size() == 2);
     CHECK(s.mounts[0].mount == "/");
     CHECK(s.mounts[0].used_kb == 11800000);
@@ -323,9 +329,12 @@ TEST_CASE("parses a snapshot") {
     CHECK(s.mounts[1].mount == "/boot");
     CHECK(fmt_temp(45300) == "45\xC2\xB0" "C");
     CHECK(fmt_temp(45999) == "46\xC2\xB0" "C");
-    CHECK(fmt_kb(2048) == "2 kB");
-    CHECK(fmt_kb(1024 * 1024) == "1.0 MB");
-    CHECK(fmt_kb(2 * 1024LL * 1024 * 1024) == "2.0 GB");
+    // fmt_kb takes kB (the old version treated it as bytes: 8 GB showed as "7.6 MB")
+    CHECK(fmt_kb(512) == "512 kB");
+    CHECK(fmt_kb(87000) == "85 MB");
+    CHECK(fmt_kb(1024 * 1024) == "1.0 GB");
+    CHECK(fmt_kb(7954536) == "7.6 GB");
+    CHECK(fmt_kb(2 * 1024LL * 1024 * 1024) == "2.0 TB");
     CHECK(fmt_bps(1024) == "1 kB/s");
     CHECK(fmt_bps(1.5 * 1024 * 1024) == "1.5 MB/s");
     CHECK(fmt_uptime(59) == "59 s");
@@ -341,6 +350,7 @@ TEST_CASE("missing gpu fields and empty snapshot") {
     CHECK(s.gpu_freq_min == 0);
     CHECK(s.gpu_freq_max == 0);
     CHECK(s.cpu_busy == 100);
+    CHECK(!s.has_dio);   // no dio line -> not "idle", just not reported
     // old 3-field gpu line and old 2-field disk line still parse
     auto old = parse_sys_stats("gpu\t-\t717\ndisk\t4118772\t114996512\n");
     CHECK(old.gpu_freq == "717");
@@ -356,9 +366,11 @@ TEST_CASE("missing gpu fields and empty snapshot") {
 
 TEST_CASE("parses a process list") {
     std::string out =
-        "proc\t1630306\t7.6\t720716\tfirefox-bin\n"
-        "proc\t1586014\t5.7\t94396\ttermius-app\n"
-        "proc\t11\t0.0\t0\tkworker/0:0H-events_highpri\n"
+        "top\t1630306\t7.6\t720716\tfirefox-bin\n"
+        "top\t1586014\t5.7\t94396\ttermius-app\n"
+        "top\t977\t0.0\t2048\tWeb Content\n"   // comm with a space
+        "proc\t212\t3\n"                         // stats count line, not a process
+        "top\t5\tbad\n"                          // short line ignored
         "garbage line\n";
     auto p = parse_sys_procs(out);
     REQUIRE(p.size() == 3);
@@ -366,7 +378,7 @@ TEST_CASE("parses a process list") {
     CHECK(p[0].cpu == 7.6);
     CHECK(p[0].mem_kb == 720716);
     CHECK(p[0].name == "firefox-bin");
-    CHECK(p[2].name == "kworker/0:0H-events_highpri");
+    CHECK(p[2].name == "Web Content");
     CHECK(parse_sys_procs("").empty());
 }
 

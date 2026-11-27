@@ -544,92 +544,158 @@ namespace Foyer {
     void StatsPage::fill(Engine &e, Node &b)
     {
         (void) e;
+        auto group = [&](Group &g) {
+            g = Group{};
+            g.box = b.add<Node>();
+            g.box->style.dir = Dir::Column;
+        };
+        auto graph = [&](ui::Graph *&gr, float scale) {
+            gr = b.add<ui::Graph>();
+            gr->style.w = Dim::fill();
+            gr->scale = scale;
+        };
         kit::section(&b, "Processor");
         kit::info_row(&b, "CPU", "Sampling\xE2\x80\xA6", &cpu_);
-        cpu_g_ = b.add<ui::Graph>();
-        cores_ = b.add<Node>();
-        cores_->style.dir = Dir::Column;
+        graph(cpu_g_, 100.f);
+        group(cores_);
         kit::info_row(&b, "Load (1/5/15 min)", "--", &load_);
         kit::info_row(&b, "Processes", "--", &procs_);
         kit::info_row(&b, "Uptime", "--", &uptime_);
         kit::section(&b, "Memory");
         kit::info_row(&b, "RAM", "--", &mem_);
-        mem_g_ = b.add<ui::Graph>();
+        graph(mem_g_, 1.f);
         kit::info_row(&b, "Swap", "--", &swap_);
-        mounts_ = b.add<Node>();
-        mounts_->style.dir = Dir::Column;
-        kit::info_row(mounts_, "Storage", "--");
+        kit::section(&b, "Storage");
+        group(mounts_);
         kit::info_row(&b, "Disk I/O", "--", &dio_);
-        kit::section(&b, "Top processes");
-        procs_list_ = b.add<Node>();
-        procs_list_->style.dir = Dir::Column;
-        kit::info_row(procs_list_, "Sampling\xE2\x80\xA6", "");
         kit::section(&b, "Graphics");
         kit::info_row(&b, "GPU", "--", &gpu_);
         kit::section(&b, "Temperature");
-        temps_ = b.add<Node>();
-        temps_->style.dir = Dir::Column;
+        group(temps_);
         kit::section(&b, "Network");
         kit::info_row(&b, "Total", "--", &net_total_);
-        net_g_ = b.add<ui::Graph>();
-        net_ = b.add<Node>();
-        net_->style.dir = Dir::Column;
+        graph(net_g_, 0.f);                     // auto-scaled...
+        net_g_->auto_floor = 1024.f * 1024.f;   // ...with a 1 MB/s floor
+        group(net_);
+        // Last: the only focusable rows, so D-pad focus never has to cross
+        // them to reach (or scroll past) the read-only sections above.
+        kit::section(&b, "Top processes");
+        auto *note = b.add<Text>("Select a process to end it", TextRole::Sm);
+        note->dim = true;
+        note->style.pad = Edges::xy(28, 0);
+        top_empty_ = b.add<Text>("Sampling\xE2\x80\xA6", TextRole::Sm);
+        top_empty_->style.pad = Edges::xy(28, 10);
+        for (int i = 0; i < kTopProcs; i++) {
+            top_[i] = ProcRow{};
+            auto *rb = b.add<kit::RowButton>(app_, "", "", "app");
+            rb->visible = false;
+            rb->on_activate = [this, i] { confirm_kill(i); };
+            top_[i].b = rb;
+        }
+    }
+
+    void StatsPage::set_group(Group &g, const std::vector<std::pair<std::string, std::string>> &rows)
+    {
+        if (g.vals.size() != rows.size()) {   // shape changed: rebuild (non-focusable rows)
+            g.box->clear_children();
+            g.keys.clear();
+            g.vals.clear();
+            for (auto &[k, v] : rows) {
+                Text *vt = nullptr;
+                Node *r = kit::info_row(g.box, k, v, &vt);
+                g.keys.push_back(static_cast<Text*>(r->children().front().get()));
+                g.vals.push_back(vt);
+            }
+            return;
+        }
+        for (size_t i = 0; i < rows.size(); i++) {   // same shape: Text::set is a no-op if unchanged
+            g.keys[i]->set(rows[i].first);
+            g.vals[i]->set(rows[i].second.empty() ? "--" : rows[i].second);
+        }
     }
 
     void StatsPage::on_enter(Engine &e) { (void) e; poll_ = 0; refresh(); }
 
-    bool StatsPage::tick(Engine &e, float dt)
+    // The page is mostly read-only rows with the process list at the end.
+    // Nothing focused: Up/Down scroll the page; Down at the bottom enters the
+    // process rows. Up from the first process row leaves them and scrolls.
+    bool StatsPage::on_action(Engine &e, Action a)
     {
-        if (e.top() != this) { poll_ = 0; return false; }   // only poll while on top
-        poll_ += dt;
-        if (poll_ >= 2.f) {
-            poll_ = 0;
-            if (!app_.jobs().busy()) refresh();
-            else poll_ = 1.9f;   // wait for the queue; retry soon
+        if ((a != Action::Up && a != Action::Down) || !list_) return false;
+        Node *f = ui::Focus::current();
+        bool in_list = f && list_->contains(f);
+        float step = list_->frame.h * 0.6f;
+        if (in_list) {
+            if (ui::Focus::move(e, a)) { app_.play_click(); return true; }
+            if (a == Action::Down) return true;   // last row: stay
+            ui::Focus::set(nullptr);               // let the scroller go
+            list_->scroll_to(list_->offset() - step);
             return true;
         }
-        return false;
+        if (a == Action::Down && list_->offset() >= list_->max_offset() - 1.f) {
+            if (Node *first = ui::Focus::first_in(list_)) { ui::Focus::set(first); app_.play_click(); }
+            return true;
+        }
+        list_->scroll_to(list_->offset() + (a == Action::Down ? step : -step));
+        return true;
+    }
+
+    bool StatsPage::tick(Engine &e, float dt)
+    {
+        // Only while visible: on top, and no app in the foreground (the
+        // launcher keeps ticking behind a running app).
+        if (e.top() != this || app_.app_running()) { poll_ = 0; return false; }
+        poll_ += dt;
+        if (poll_ < 2.f || in_flight_) return false;
+        poll_ = 0;
+        refresh();
+        return false;   // the job result invalidates; no need to force frames
     }
 
     void StatsPage::refresh()
     {
-        app_.jobs().run(ctl("sys", "stats"), [this](const JobResult &r) {
+        if (in_flight_) return;
+        in_flight_ = true;
+        // One job, one 0.5 s window: system stats + the busiest processes.
+        std::weak_ptr<bool> alive = alive_;
+        app_.jobs().run(ctl("sys", "stats", {"--top", std::to_string(kTopProcs)}),
+                        [this, alive](const JobResult &r) {
+            if (alive.expired()) return;   // page already popped
+            in_flight_ = false;
             if (!r.ok) return;
-            show(parse_sys_stats(r.output));
-        });
-        app_.jobs().run(ctl("sys", "procs", {"10"}), [this](const JobResult &r) {
-            if (!r.ok) return;
-            show_procs(parse_sys_procs(r.output));
+            StatsSnapshot s = parse_sys_stats(r.output);
+            show(s);
+            show_procs(s.top);
         });
     }
 
     void StatsPage::show(const StatsSnapshot &s)
     {
         if (cpu_) cpu_->set(sfmt("%d%%", s.cpu_busy));
-        if (cpu_g_) cpu_g_->push(s.cpu_busy / 100.f);
-        cores_->clear_children();
-        for (auto &c : s.cores)
-            kit::info_row(cores_, "Core " + std::to_string(c.index + 1), sfmt("%d%%", c.busy));
-        if (load_) load_->set(sfmt("%.2f / %.2f / %.2f", s.load1, s.load5, s.load15));
-        if (procs_) procs_->set(std::to_string(s.procs) + "  (" + std::to_string(s.procs_running) + " running)");
-        if (uptime_) uptime_->set(fmt_uptime(s.uptime_s));
-        if (mem_) {
-            long long used = std::max(s.mem_total_kb - s.mem_avail_kb, 0LL);
-            mem_->set(fmt_kb(used) + " used of " + fmt_kb(s.mem_total_kb));
+        cpu_g_->push((float) s.cpu_busy);
+        {
+            std::vector<std::pair<std::string, std::string>> rows;
+            for (auto &c : s.cores) rows.push_back({"Core " + std::to_string(c.index + 1), sfmt("%d%%", c.busy)});
+            set_group(cores_, rows);
         }
-        if (mem_g_ && s.mem_total_kb > 0)
-            mem_g_->push((double) std::max(s.mem_total_kb - s.mem_avail_kb, 0LL) / s.mem_total_kb);
-        if (swap_) swap_->set(s.swap_total_kb > 0 ? fmt_kb(s.swap_used_kb) + " of " + fmt_kb(s.swap_total_kb)
-                                                  : "none");
-        mounts_->clear_children();
-        if (s.mounts.empty()) kit::info_row(mounts_, "Storage", "n/a");
-        for (auto &m : s.mounts)
-            kit::info_row(mounts_, m.mount == "/" ? "Storage" : m.mount,
-                          fmt_kb(m.used_kb) + " of " + fmt_kb(m.total_kb));
-        if (dio_) dio_->set(s.disk_read_kbs > 0 || s.disk_write_kbs > 0
-            ? fmt_bps(s.disk_read_kbs * 1024) + " down  \xC2\xB7  " + fmt_bps(s.disk_write_kbs * 1024) + " up"
-            : "idle");
-        if (gpu_) {
+        load_->set(sfmt("%.2f / %.2f / %.2f", s.load1, s.load5, s.load15));
+        procs_->set(std::to_string(s.procs) + "  (" + std::to_string(s.procs_running) + " running)");
+        uptime_->set(fmt_uptime(s.uptime_s));
+        long long used = std::max(s.mem_total_kb - s.mem_avail_kb, 0LL);
+        mem_->set(s.mem_total_kb > 0 ? fmt_kb(used) + " used of " + fmt_kb(s.mem_total_kb) : "n/a");
+        if (s.mem_total_kb > 0) mem_g_->push((float) ((double) used / s.mem_total_kb));
+        swap_->set(s.swap_total_kb > 0 ? fmt_kb(s.swap_used_kb) + " of " + fmt_kb(s.swap_total_kb) : "none");
+        {
+            std::vector<std::pair<std::string, std::string>> rows;
+            for (auto &m : s.mounts)
+                rows.push_back({m.mount, fmt_kb(m.used_kb) + " of " + fmt_kb(m.total_kb)});
+            if (rows.empty()) rows.push_back({"Mounts", "n/a"});
+            set_group(mounts_, rows);
+        }
+        dio_->set(!s.has_dio ? "n/a"
+                  : s.disk_read_kbs <= 0 && s.disk_write_kbs <= 0 ? "idle"
+                  : fmt_bps(s.disk_read_kbs * 1024) + " read  \xC2\xB7  " + fmt_bps(s.disk_write_kbs * 1024) + " write");
+        {
             std::string g;
             if (!s.gpu_busy.empty()) g = s.gpu_busy + "%";
             if (!s.gpu_freq.empty()) g += (g.empty() ? "" : "  \xC2\xB7  ") + s.gpu_freq + " MHz";
@@ -637,55 +703,70 @@ namespace Foyer {
                 g += (g.empty() ? "" : "  ") + sfmt("(%d\xE2\x80\x93%d)", s.gpu_freq_min, s.gpu_freq_max);
             gpu_->set(g.empty() ? "n/a" : g);
         }
-        temps_->clear_children();
-        int ntemp = 0;
-        for (auto &[name, mc] : s.temps) {
-            kit::info_row(temps_, name, fmt_temp(mc));
-            ntemp++;
+        {
+            std::vector<std::pair<std::string, std::string>> rows;
+            for (auto &[name, mc] : s.temps) rows.push_back({name, fmt_temp(mc)});
+            if (rows.empty()) rows.push_back({"Sensors", "none"});
+            set_group(temps_, rows);
         }
-        if (!ntemp) kit::info_row(temps_, "Sensors", "none");
         double net_total = 0;
-        for (auto &i : s.net) net_total += i.rx + i.tx;
-        if (net_total_) net_total_->set(fmt_bps(net_total));
-        if (net_g_) {
-            net_hist_.push_back(net_total);
-            if ((int) net_hist_.size() > ui::Graph::kSlots) net_hist_.pop_front();
-            double scale = 1024 * 1024;   // 1 MB/s floor
-            for (double v : net_hist_) scale = std::max(scale, v);
-            net_g_->push((float) (net_total / scale));
-        }
-        net_->clear_children();
-        int nnet = 0;
+        std::vector<std::pair<std::string, std::string>> rows;
         for (auto &i : s.net) {
-            kit::info_row(net_, i.name, fmt_bps(i.rx) + "  \xC2\xB7  " + fmt_bps(i.tx) + " up");
-            nnet++;
+            net_total += i.rx + i.tx;
+            rows.push_back({i.name, fmt_bps(i.rx) + " down  \xC2\xB7  " + fmt_bps(i.tx) + " up"});
         }
-        if (!nnet) kit::info_row(net_, "Interfaces", "none");
-        invalidate_layout();
+        if (rows.empty()) rows.push_back({"Interfaces", "none"});
+        set_group(net_, rows);
+        net_total_->set(fmt_bps(net_total));
+        net_g_->push((float) net_total);
     }
 
     void StatsPage::show_procs(const std::vector<ProcStat> &p)
     {
-        procs_list_->clear_children();
-        int n = 0;
-        for (auto &q : p) {
-            auto *b = procs_list_->add<kit::RowButton>(app_,
-                q.name + " (" + std::to_string(q.pid) + ")",
-                sfmt("%.1f%%  \xC2\xB7  %s", q.cpu, fmt_kb(q.mem_kb).c_str()), "app");
-            b->on_activate = [this, name = q.name, pid = q.pid] {
-                app_.ui().push(std::make_unique<ConfirmDialog>(app_, "Kill " + name + "?", "",
-                    "Kill", "Cancel", [this, name, pid](bool yes) {
-                        if (!yes) return;
-                        app_.jobs().run(ctl("sys", "kill", {std::to_string(pid)}),
-                            [this, name](const JobResult &r) {
-                                app_.toast(r.ok ? "Killed " + name : "Could not kill " + name, !r.ok);
-                            });
-                    }));
-            };
-            n++;
+        int n = std::min((int) p.size(), (int) kTopProcs);
+        for (int i = 0; i < kTopProcs; i++) {
+            ProcRow &row = top_[i];
+            if (i >= n) {
+                row.pid = -1;
+                if (row.b->visible) {
+                    // never hide the focused row out from under the D-pad
+                    if (row.b->focused()) { row.b->set_value("ended"); continue; }
+                    row.b->visible = false;
+                    ui::invalidate_layout();
+                }
+                continue;
+            }
+            const ProcStat &q = p[i];
+            row.pid = q.pid;
+            row.name = q.name;
+            row.b->label->set(q.name);
+            row.b->set_value(sfmt("%.1f%%  \xC2\xB7  %s", q.cpu, fmt_kb(q.mem_kb).c_str()));
+            if (!row.b->visible) { row.b->visible = true; ui::invalidate_layout(); }
         }
-        if (!n) kit::info_row(procs_list_, "Processes", "none");
-        invalidate_layout();
+        top_empty_->set("None");   // replaces "Sampling..." after the first result
+        if (top_empty_->visible != (n == 0)) {
+            top_empty_->visible = n == 0;
+            ui::invalidate_layout();
+        }
+    }
+
+    void StatsPage::confirm_kill(int slot)
+    {
+        // Snapshot pid + name now: the slot is refreshed every 2 s.
+        int pid = top_[slot].pid;
+        std::string name = top_[slot].name;
+        if (pid <= 1) return;
+        // Callbacks capture App (outlives every page), never `this`.
+        App *app = &app_;
+        app_.ui().push(std::make_unique<ConfirmDialog>(app_, "End " + name + "?",
+            "Sends SIGTERM to process " + std::to_string(pid) + ".", "End process", "Cancel",
+            [app, pid, name](bool yes) {
+                if (!yes) return;
+                app->jobs().run(ctl("sys", "kill", {std::to_string(pid)}),
+                    [app, name](const JobResult &r) {
+                        app->toast(r.ok ? "Ended " + name : "Could not end " + name, !r.ok);
+                    });
+            }));
     }
 
     // ---- Power -------------------------------------------------------------------
